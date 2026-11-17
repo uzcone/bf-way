@@ -63,7 +63,7 @@
                     </div>
                 </div>
 
-                <!-- Route Search with Real Geocoding Search -->
+                <!-- Route Search -->
                 <div class="space-y-1.5">
                     <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">실시간 경로 안내</label>
                     <div class="relative">
@@ -72,7 +72,7 @@
                     </div>
                     <div class="relative">
                         <i class="fa-solid fa-flag-checkered absolute left-2.5 top-2.5 text-rose-500 text-xs"></i>
-                        <input type="text" id="destination-input" value="호원동 85-14" placeholder="목적지 입력 (예: 의정부역, 호원동)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500">
+                        <input type="text" id="destination-input" value="호원동 85-14" placeholder="목적지 입력" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500">
                     </div>
                     <button onclick="searchAndCalculateRoute()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-2 px-3 rounded-lg shadow transition flex items-center justify-center space-x-1.5 text-xs">
                         <i class="fa-solid fa-compass"></i> <span>무장애 안전 길찾기 실행</span>
@@ -118,10 +118,9 @@
         </div>
     </div>
 
-    <!-- Leaflet & Nominatim Geocoding JS -->
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Start position (Uijeongbu / Dobong area default)
         let currentLat = 37.738;
         let currentLon = 127.033;
 
@@ -135,7 +134,6 @@
         let destMarker = null;
         let routeLayer = null;
 
-        // Real GPS tracking
         if (navigator.geolocation) {
             navigator.geolocation.watchPosition(
                 (position) => {
@@ -158,7 +156,6 @@
             activeBtn.classList.add('bg-emerald-600', 'border-emerald-500', 'text-white');
         }
 
-        // Real Address Search (Nominatim API) & Distance Calculation
         async function searchAndCalculateRoute() {
             const query = document.getElementById('destination-input').value.trim();
             if(!query) {
@@ -166,7 +163,6 @@
                 return;
             }
 
-            // Use OpenStreetMap Nominatim for searching Korean addresses
             const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
 
             try {
@@ -184,24 +180,22 @@
 
                     if (routeLayer) map.removeLayer(routeLayer);
 
-                    // Draw route line
                     routeLayer = L.polyline([
                         [currentLat, currentLon],
                         [destLat, destLon]
-                    ], {color: '#10b981', weight: 6, opacity: 0.9}).directive ? ... : L.polyline([[currentLat, currentLon], [destLat, destLon]], {color: '#10b981', weight: 6, opacity: 0.9}).addTo(map);
+                    ], {color: '#10b981', weight: 6, opacity: 0.9}).addTo(map);
 
                     map.fitBounds(routeLayer.getBounds(), {padding: [50, 50]});
 
-                    // Calculate real distance (Haversine formula approximation)
                     const distKm = calculateDistance(currentLat, currentLon, destLat, destLon);
-                    const timeMin = Math.round((distKm / 4) * 60); // Walking speed approx 4 km/h for mobility impaired
+                    const timeMin = Math.round((distKm / 4) * 60);
 
                     document.getElementById('route-info').classList.remove('hidden');
                     document.getElementById('info-dist').innerText = distKm.toFixed(1) + " km";
                     document.getElementById('info-time').innerText = timeMin > 60 ? Math.floor(timeMin/60) + "시간 " + (timeMin%60) + "분 (안전길)" : timeMin + "분 (안전길)";
 
                 } else {
-                    alert("해당 주소를 찾을 수 없습니다. 정확한 장소명을 입력해주세요.");
+                    alert("해당 주소를 찾을 수 없습니다.");
                 }
             } catch (err) {
                 console.error(err);
@@ -209,7 +203,6 @@
             }
         }
 
-        // Distance formula (km)
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371; 
             const dLat = (lat2 - lat1) * Math.PI / 180;
