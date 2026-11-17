@@ -170,18 +170,18 @@
       <!-- MAP SECTION -->
       <section class="surface p-3 md:p-4 flex-1 flex flex-col relative" id="map-container">
         
-        <!-- Live Navigation Top Overlay Card (Hidden by default) -->
+        <!-- Live Navigation Top Overlay Card -->
         <div id="navTopCard" class="nav-top-card hidden">
           <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white grid place-items-center shrink-0">
             <i data-lucide="arrow-up-right" class="w-7 h-7"></i>
           </div>
           <div class="flex-1 min-w-0">
             <div id="navInstruction" class="text-lg font-black truncate">안내를 시작합니다</div>
-            <div id="navSubInfo" class="text-xs muted">목적지까지 안전하게 이동하세요</div>
+            <div id="navSubInfo" class="text-xs muted">무장애 안전 경로로 이동 중</div>
           </div>
         </div>
 
-        <!-- Live Navigation Bottom Exit Bar (Hidden by default) -->
+        <!-- Live Navigation Bottom Exit Bar -->
         <div id="navBottomBar" class="nav-bottom-bar hidden">
           <span id="navTimeDist">-- km • --분</span>
           <button id="stopNavBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full grid place-items-center" title="안내 종료">
@@ -337,8 +337,8 @@
       }
     }
 
-    // Start Live Navigation Mode
-    function startLiveNavigation() {
+    // Fetch real road routing from OSRP (Open Source Routing Machine) to avoid going through buildings
+    async function startLiveNavigation() {
       if (!currentPosition) {
         alert("먼저 '현재 위치' 버튼을 눌러 GPS를 켜주세요!");
         startGPS();
@@ -351,36 +351,57 @@
 
       if (routeLayer) map.removeLayer(routeLayer);
 
-      routeLayer = L.polyline([currentPosition, destinationPosition], { color: '#16a34a', weight: 6, opacity: 0.9 }).addTo(map);
+      const startLon = currentPosition[1];
+      const startLat = currentPosition[0];
+      const destLon = destinationPosition[1];
+      const destLat = destinationPosition[0];
+
+      try {
+        // Request routing strictly along actual pedestrian roads
+        const osrmUrl = `https://router.project-osrm.org/route/v1/foot/${startLon},${startLat};${destLon},${destLat}?overview=full&geometries=geojson`;
+        const response = await fetch(osrmUrl);
+        const data = await response.json();
+
+        if (data.code === "Ok" && data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          // OSRM returns coordinates as [lon, lat], convert to Leaflet's [lat, lon]
+          const latLngs = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+
+          routeLayer = L.polyline(latLngs, { color: '#2563eb', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(map);
+          map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
+
+          const distKm = route.distance / 1000;
+          const totalMinutes = Math.max(1, Math.round(route.duration / 60));
+
+          const distText = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(2)} km`;
+          const timeText = totalMinutes >= 60 ? `${Math.floor(totalMinutes/60)}시간 ${totalMinutes%60}분` : `${totalMinutes}분`;
+
+          $("distanceValue").textContent = distText;
+          $("timeValue").textContent = timeText;
+
+          // ENTER FULLSCREEN NAVIGATION MODE
+          document.body.classList.add("nav-mode");
+          $("navTopCard").classList.remove("hidden");
+          $("navBottomBar").classList.remove("hidden");
+          $("navInstruction",).textContent = `${$("destinationInput").value} 방면으로 이동`;
+          $("navSubInfo").textContent = `무장애 안전 경로 • 남은 거리 ${distText}`;
+          $("navTimeDist").textContent = `${distText} • ${timeText}`;
+
+          setTimeout(() => map.invalidateSize(), 200);
+          return;
+        }
+      } catch (err) {
+        console.warn("OSRM routing failed, falling back to direct line:", err);
+      }
+
+      // Fallback if network fails
+      routeLayer = L.polyline([currentPosition, destinationPosition], { color: '#2563eb', weight: 6, opacity: 0.9 }).addTo(map);
       map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
-
-      const lat1 = currentPosition[0], lon1 = currentPosition[1];
-      const lat2 = destinationPosition[0], lon2 = destinationPosition[1];
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-      const distKm = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
-      const totalMinutes = Math.max(1, Math.round((distKm / 4) * 60));
-
-      const distText = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(2)} km`;
-      const timeText = totalMinutes >= 60 ? `${Math.floor(totalMinutes/60)}시간 ${totalMinutes%60}분` : `${totalMinutes}분`;
-
-      $("distanceValue").textContent = distText;
-      $("timeValue").textContent = timeText;
-
-      // ENTER FULLSCREEN NAVIGATION MODE (Like Naver/Kakao Map)
       document.body.classList.add("nav-mode");
       $("navTopCard").classList.remove("hidden");
       $("navBottomBar").classList.remove("hidden");
-      $("navInstruction").textContent = `${$("destinationInput").value} 방면으로 이동`;
-      $("navSubInfo").textContent = `무장애 안전 경로 • 남은 거리 ${distText}`;
-      $("navTimeDist").textContent = `${distText} • ${timeText}`;
-
-      setTimeout(() => map.invalidateSize(), 200);
     }
 
-    // Stop Live Navigation Mode
     function stopLiveNavigation() {
       document.body.classList.remove("nav-mode");
       $("navTopCard").classList.add("hidden");
