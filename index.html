@@ -4,29 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BF-Way - AI 기반 무장애 길찾기 플랫폼</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-        }
-    </script>
-    <!-- Leaflet CSS -->
+    <script>tailwind.config = { darkMode: 'class' }</script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <style>
         #map { height: 100%; width: 100%; border-radius: 0.75rem; z-index: 10; }
-        .pulse-ring {
-            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.05); }
-        }
-        .grayscale-mode {
-            filter: grayscale(100%) contrast(150%) !important;
-        }
+        .pulse-ring { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.05); } }
+        .grayscale-mode { filter: grayscale(100%) contrast(150%) !important; }
     </style>
 </head>
 <body id="app-body" class="bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans h-screen flex flex-col overflow-hidden transition duration-300">
@@ -43,49 +29,37 @@
             </div>
         </div>
         <div class="flex items-center space-x-2">
-            <!-- Light/Dark Mode Toggle -->
-            <button onclick="toggleDarkMode()" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center space-x-1 shadow transition border border-slate-300 dark:border-slate-600" title="화이트/다크 모드">
+            <button onclick="toggleDarkMode()" class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow transition border border-slate-300 dark:border-slate-600">
                 <i id="theme-icon" class="fa-solid fa-sun"></i>
             </button>
-            <!-- Grayscale Toggle Button -->
-            <button onclick="toggleGrayscale()" class="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center space-x-1 shadow transition border border-slate-300 dark:border-slate-600" title="고대비 흑백 모드">
-                <i class="fa-solid fa-circle-half-stroke"></i>
-                <span class="hidden sm:inline">흑백</span>
+            <button onclick="toggleGrayscale()" class="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow transition border border-slate-300 dark:border-slate-600">
+                <i class="fa-solid fa-circle-half-stroke"></i> 흑백
             </button>
-            <button onclick="toggleScanner()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center space-x-1 shadow transition">
-                <i class="fa-solid fa-camera"></i>
-                <span>AI 스캐너</span>
+            <button onclick="toggleScanner()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow transition">
+                <i class="fa-solid fa-camera"></i> AI 스캐너
             </button>
         </div>
     </header>
 
     <!-- Main Container -->
     <main class="flex-1 flex flex-col md:flex-row p-2 gap-2 overflow-hidden max-w-7xl mx-auto w-full">
-        
-        <!-- Sidebar / Control Panel -->
         <section class="w-full md:w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex flex-col justify-between shadow-lg shrink-0 space-y-2">
-            
             <div class="space-y-2.5">
-                <!-- User Mode Selection -->
                 <div>
                     <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">이동약자 유형 선택</label>
                     <div class="grid grid-cols-3 gap-1.5">
                         <button onclick="setMode('wheelchair')" id="btn-wheelchair" class="mode-btn bg-emerald-600 text-white py-2 px-1 rounded-lg text-xs font-medium flex flex-col items-center justify-center space-y-0.5 shadow transition border border-emerald-500">
-                            <i class="fa-solid fa-wheelchair text-sm"></i>
-                            <span>휠체어</span>
+                            <i class="fa-solid fa-wheelchair text-sm"></i> <span>휠체어</span>
                         </button>
-                        <button onclick="setMode('stroller')" id="btn-stroller" class="mode-btn bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 py-2 px-1 rounded-lg text-xs font-medium flex flex-col items-center justify-center space-y-0.5 transition border border-slate-300 dark:border-slate-600">
-                            <i class="fa-solid fa-baby-carriage text-sm"></i>
-                            <span>유모차</span>
+                        <button onclick="setMode('stroller')" id="btn-stroller" class="mode-btn bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 py-2 px-1 rounded-lg text-xs font-medium flex flex-col items-center justify-center space-y-0.5 transition border border-slate-300 dark:border-slate-600">
+                            <i class="fa-solid fa-baby-carriage text-sm"></i> <span>유모차</span>
                         </button>
-                        <button onclick="setMode('elderly')" id="btn-elderly" class="mode-btn bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 py-2 px-1 rounded-lg text-xs font-medium flex flex-col items-center justify-center space-y-0.5 transition border border-slate-300 dark:border-slate-600">
-                            <i class="fa-solid fa-person-cane text-sm"></i>
-                            <span>어르신</span>
+                        <button onclick="setMode('elderly')" id="btn-elderly" class="mode-btn bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 py-2 px-1 rounded-lg text-xs font-medium flex flex-col items-center justify-center space-y-0.5 transition border border-slate-300 dark:border-slate-600">
+                            <i class="fa-solid fa-person-cane text-sm"></i> <span>어르신</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Route Search -->
                 <div class="space-y-1.5">
                     <label class="block text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">경로 검색</label>
                     <div class="relative">
@@ -101,35 +75,21 @@
                         </select>
                     </div>
                     <button onclick="calculateRoute()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-2 px-3 rounded-lg shadow transition flex items-center justify-center space-x-1.5 text-xs">
-                        <i class="fa-solid fa-route"></i>
-                        <span>무장애 안전 경로 찾기</span>
+                        <i class="fa-solid fa-route"></i> <span>무장애 안전 경로 찾기</span>
                     </button>
                 </div>
 
-                <!-- Navigation Status Info -->
                 <div id="route-info" class="hidden bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 rounded-lg space-y-1 text-xs">
-                    <div class="flex justify-between items-center">
-                        <span class="text-slate-500 dark:text-slate-400 text-[11px]">총 거리:</span>
-                        <span class="font-bold text-emerald-600 dark:text-emerald-400" id="info-dist">1.2 km</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-slate-500 dark:text-slate-400 text-[11px]">소요 시간:</span>
-                        <span class="font-bold text-slate-800 dark:text-slate-200" id="info-time">52분</span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-slate-500 dark:text-slate-400 text-[11px]">계단/장애물:</span>
-                        <span class="font-bold text-emerald-600 dark:text-emerald-400">0개 (완벽 무장애)</span>
-                    </div>
+                    <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400 text-[11px]">총 거리:</span><span class="font-bold text-emerald-600 dark:text-emerald-400" id="info-dist">1.2 km</span></div>
+                    <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400 text-[11px]">소요 시간:</span><span class="font-bold text-slate-800 dark:text-slate-200" id="info-time">52분</span></div>
+                    <div class="flex justify-between items-center"><span class="text-slate-500 dark:text-slate-400 text-[11px]">계단/장애물:</span><span class="font-bold text-emerald-600 dark:text-emerald-400">0개 (완벽 무장애)</span></div>
                 </div>
             </div>
-
-            <!-- Footer info -->
             <div class="text-center text-[10px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-200 dark:border-slate-700">
                 <p>BF-Way Platform v1.0 • PostGIS + A* + YOLO</p>
             </div>
         </section>
 
-        <!-- Map View Area -->
         <section class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-1.5 relative shadow-lg min-h-[250px] md:min-h-full">
             <div id="map"></div>
         </section>
@@ -140,46 +100,27 @@
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 w-full max-w-md rounded-2xl p-5 space-y-4 shadow-2xl relative text-slate-900 dark:text-slate-100">
             <div class="flex justify-between items-center">
                 <h3 class="font-bold text-emerald-600 dark:text-emerald-400 flex items-center space-x-2 text-sm">
-                    <i class="fa-solid fa-camera-rotate"></i>
-                    <span>YOLO AI 비전 장애물 감지</span>
+                    <i class="fa-solid fa-camera-rotate"></i> <span>YOLO AI 비전 장애물 감지</span>
                 </h3>
-                <button onclick="toggleScanner()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </button>
+                <button onclick="toggleScanner()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
             </div>
-            
             <div class="bg-slate-900 h-60 rounded-xl border border-slate-700 relative overflow-hidden flex items-center justify-center text-white">
                 <div class="absolute inset-0 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px] opacity-20"></div>
                 <div class="text-center space-y-2 p-4">
-                    <div class="inline-block p-3 bg-emerald-500/20 text-emerald-400 rounded-full pulse-ring">
-                        <i class="fa-solid fa-eye text-2xl"></i>
-                    </div>
+                    <div class="inline-block p-3 bg-emerald-500/20 text-emerald-400 rounded-full pulse-ring"><i class="fa-solid fa-eye text-2xl"></i></div>
                     <p class="text-xs text-slate-300">카메라 작동 중. 전방 도로 상태 스캔 중...</p>
-                    <div class="bg-rose-500/20 border border-rose-500/50 text-rose-300 text-[11px] px-3 py-1.5 rounded-lg inline-block">
-                        ⚠️ 주의: 전방 15m 지점에 높은 턱(계단) 감지됨! 우회 경로 안내
-                    </div>
+                    <div class="bg-rose-500/20 border border-rose-500/50 text-rose-300 text-[11px] px-3 py-1.5 rounded-lg inline-block">⚠️ 주의: 전방 15m 지점에 높은 턱(계단) 감지됨! 우회 경로 안내</div>
                 </div>
             </div>
-
-            <button onclick="toggleScanner()" class="w-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-white font-medium py-2 rounded-xl text-xs transition">
-                스캐너 닫기
-            </button>
+            <button onclick="toggleScanner()" class="w-full bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-white font-medium py-2 rounded-xl text-xs transition">스캐너 닫기</button>
         </div>
     </div>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         const map = L.map('map').setView([37.595, 127.092], 14);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        const currentMarker = L.marker([37.595, 127.092]).addTo(map)
-            .bindPopup("<b>상봉터미널 (출발지)</b>")
-            .openPopup();
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+        L.marker([37.595, 127.092]).addTo(map).bindPopup("<b>상봉터미널 (출발지)</b>").openPopup();
 
         let routeLayer = null;
 
@@ -196,31 +137,13 @@
         function calculateRoute() {
             const destType = document.getElementById('destination-select').value;
             let destCoords = [37.606, 127.092];
-            let distText = "1.2 km";
-            let timeText = "52분 (안전 경로)";
+            let distText = "1.2 km", timeText = "52분 (안전 경로)";
+            if (destType === 'park') { destCoords = [37.600, 127.085]; distText = "850 m"; timeText = "35분 (안전 경로)"; }
+            else if (destType === 'station') { destCoords = [37.615, 127.100]; distText = "2.1 km"; timeText = "1시간 10분 (안전 경로)"; }
 
-            if (destType === 'park') {
-                destCoords = [37.600, 127.085];
-                distText = "850 m";
-                timeText = "35분 (안전 경로)";
-            } else if (destType === 'station') {
-                destCoords = [37.615, 127.100];
-                distText = "2.1 km";
-                timeText = "1시간 10분 (안전 경로)";
-            }
-
-            if (routeLayer) {
-                map.removeLayer(routeLayer);
-            }
-
-            routeLayer = L.polyline([
-                [37.595, 127.092],
-                [37.598, 127.095],
-                destCoords
-            ], {color: '#00ffcc', weight: 6, opacity: 0.9}).addTo(map);
-
+            if (routeLayer) map.removeLayer(routeLayer);
+            routeLayer = L.polyline([[37.595, 127.092], [37.598, 127.095], destCoords], {color: '#00ffcc', weight: 6, opacity: 0.9}).addTo(map);
             map.fitBounds(routeLayer.getBounds(), {padding: [30, 30]});
-
             document.getElementById('route-info').classList.remove('hidden');
             document.getElementById('info-dist').innerText = distText;
             document.getElementById('info-time').innerText = timeText;
@@ -229,26 +152,16 @@
         function toggleDarkMode() {
             const htmlRoot = document.getElementById('html-root');
             const themeIcon = document.getElementById('theme-icon');
-            
             htmlRoot.classList.toggle('dark');
-            if (htmlRoot.classList.contains('dark')) {
-                themeIcon.className = "fa-solid fa-sun";
-            } else {
-                themeIcon.className = "fa-solid fa-moon";
-            }
+            themeIcon.className = htmlRoot.classList.contains('dark') ? "fa-solid fa-sun" : "fa-solid fa-moon";
         }
 
-        function toggleGrayscale() {
-            const body = document.getElementById('app-body');
-            body.classList.toggle('grayscale-mode');
-        }
-
-        function toggleScanner() {
+        function toggleGrayscale() { document.getElementById('app-body').classList.toggle('grayscale-mode'); }
+        function toggleScanner() { 
             const modal = document.getElementById('scanner-modal');
             modal.classList.toggle('hidden');
             modal.classList.toggle('flex');
         }
-
         setTimeout(() => { map.invalidateSize(); }, 300);
     </script>
 </body>
