@@ -11,10 +11,10 @@
             darkMode: 'class',
         }
     </script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <!-- Kakao Maps SDK (YOUR_KAKAO_JS_KEY o'rniga o'z kalitingizni yozing) -->
-    <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=YOUR_KAKAO_JS_KEY"></script>
     <style>
         #map { height: 100%; width: 100%; border-radius: 0.75rem; z-index: 10; }
         .pulse-ring {
@@ -39,7 +39,7 @@
             </div>
             <div>
                 <h1 class="text-base font-bold tracking-wide text-emerald-600 dark:text-emerald-400 leading-tight">BF-Way</h1>
-                <p class="text-[10px] text-slate-500 dark:text-slate-400">카카오맵 연동 무장애 길찾기</p>
+                <p class="text-[10px] text-slate-500 dark:text-slate-400">AI 기반 무장애 길찾기 플랫폼</p>
             </div>
         </div>
         <div class="flex items-center space-x-2">
@@ -125,7 +125,7 @@
 
             <!-- Footer info -->
             <div class="text-center text-[10px] text-slate-400 dark:text-slate-500 pt-1 border-t border-slate-200 dark:border-slate-700">
-                <p>BF-Way Platform • KakaoMap + PostGIS + YOLO</p>
+                <p>BF-Way Platform v1.0 • PostGIS + A* + YOLO</p>
             </div>
         </section>
 
@@ -167,24 +167,21 @@
         </div>
     </div>
 
-    <!-- Kakao Maps Script Initialization -->
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Kakao Map Initialization
-        const container = document.getElementById('map');
-        const options = {
-            center: new kakao.maps.LatLng(37.595, 127.092), // Sangbong Terminal / Jungnang-gu
-            level: 4
-        };
-        const map = new kakao.maps.Map(container, options);
+        const map = L.map('map').setView([37.595, 127.092], 14);
 
-        // Marker for Starting Point
-        const markerPosition = new kakao.maps.LatLng(37.595, 127.092);
-        const marker = new kakao.maps.Marker({
-            position: markerPosition
-        });
-        marker.setMap(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
 
-        let polyline = null;
+        const currentMarker = L.marker([37.595, 127.092]).addTo(map)
+            .bindPopup("<b>상봉터미널 (출발지)</b>")
+            .openPopup();
+
+        let routeLayer = null;
 
         function setMode(mode) {
             document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -198,41 +195,31 @@
 
         function calculateRoute() {
             const destType = document.getElementById('destination-select').value;
-            let destCoords = new kakao.maps.LatLng(37.606, 127.092);
+            let destCoords = [37.606, 127.092];
             let distText = "1.2 km";
             let timeText = "52분 (안전 경로)";
 
             if (destType === 'park') {
-                destCoords = new kakao.maps.LatLng(37.600, 127.085);
+                destCoords = [37.600, 127.085];
                 distText = "850 m";
                 timeText = "35분 (안전 경로)";
             } else if (destType === 'station') {
-                destCoords = new kakao.maps.LatLng(37.615, 127.100);
+                destCoords = [37.615, 127.100];
                 distText = "2.1 km";
                 timeText = "1시간 10분 (안전 경로)";
             }
 
-            if (polyline) {
-                polyline.setMap(null);
+            if (routeLayer) {
+                map.removeLayer(routeLayer);
             }
 
-            // Draw safe route line on Kakao Map
-            const linePath = [
-                new kakao.maps.LatLng(37.595, 127.092),
-                new kakao.maps.LatLng(37.598, 127.095),
+            routeLayer = L.polyline([
+                [37.595, 127.092],
+                [37.598, 127.095],
                 destCoords
-            ];
+            ], {color: '#00ffcc', weight: 6, opacity: 0.9}).addTo(map);
 
-            polyline = new kakao.maps.Polyline({
-                path: linePath,
-                strokeWeight: 6,
-                strokeColor: '#00ffcc',
-                strokeOpacity: 0.9,
-                strokeStyle: 'solid'
-            });
-
-            polyline.setMap(map);
-            map.setCenter(destCoords);
+            map.fitBounds(routeLayer.getBounds(), {padding: [30, 30]});
 
             document.getElementById('route-info').classList.remove('hidden');
             document.getElementById('info-dist').innerText = distText;
@@ -263,6 +250,8 @@
             modal.classList.toggle('hidden');
             modal.classList.toggle('flex');
         }
+
+        setTimeout(() => { map.invalidateSize(); }, 300);
     </script>
 </body>
 </html>
