@@ -34,7 +34,7 @@
     }
     button, input { font: inherit; }
     button { cursor: pointer; }
-    .app-shell { max-width: 1440px; margin: auto; min-height: 100vh; }
+    .app-shell { max-width: 1440px; margin: auto; min-height: 100vh; display: flex; flex-direction: column; }
     .surface { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; }
     .muted { color: var(--muted); }
     .primary-btn {
@@ -53,8 +53,28 @@
     .mode-card.active {
       border: 2px solid var(--primary); background: var(--primary-light); color: var(--primary); padding: 12px 8px;
     }
-    #map { height: 540px; width: 100%; border-radius: 18px; z-index: 1; background: #e2e8f0; }
-    .map-overlay { position: absolute; z-index: 500; top: 14px; right: 14px; display: flex; flex-direction: column; gap: 8px; }
+    #map { flex: 1; width: 100%; border-radius: 18px; z-index: 1; background: #e2e8f0; min-height: 400px; }
+    
+    /* Navigation Live Mode Overlay Style */
+    .nav-mode #sidebar-section, .nav-mode header, .nav-mode footer, .nav-mode .intro-section, .nav-mode .mode-section, .nav-mode .scanner-section, .nav-mode .disclaimer-section {
+      display: none !important;
+    }
+    .nav-mode .app-shell { padding: 0 !important; height: 100vh; display: flex; flex-direction: column; }
+    .nav-mode #map-container { flex: 1; padding: 0; border-radius: 0; border: none; height: 100vh; }
+    .nav-mode #map { height: 100vh !important; border-radius: 0; }
+
+    .nav-top-card {
+      position: absolute; top: 16px; left: 16px; right: 16px; z-index: 1000;
+      background: white; border-radius: 18px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      display: flex; align-items: center; gap: 14px; color: #0f172a;
+    }
+    .nav-bottom-bar {
+      position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000;
+      background: #0f172a; color: white; padding: 12px 24px; border-radius: 30px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 16px; font-weight: bold;
+    }
+
+    .map-overlay { position: absolute; z-index: 500; top: 100px; right: 16px; display: flex; flex-direction: column; gap: 8px; }
     .map-control {
       width: 42px; height: 42px; display: grid; place-items: center;
       border-radius: 12px; background: white; color: #0f172a; box-shadow: 0 2px 10px #00000018;
@@ -82,15 +102,16 @@
     }
     @keyframes scan { 0%, 100% { top: 15%; } 50% { top: 85%; } }
     .dark { --bg: #0f172a; --surface: #1e293b; --text: #f8fafc; --muted: #94a3b8; --border: #334155; --primary-light: #1e3a8a; }
-    .dark .mode-card.active { background: #1e3a8a; color: #bfdbfe; }
     .dark .map-control { background: #1e293b; color: white; }
-    .dark .scanner-preview { background: linear-gradient(135deg, #1e3a8a, #1e293b); }
+    .dark .nav-top-card { background: #1e293b; color: white; }
     .grayscale { filter: grayscale(1); }
   </style>
 </head>
 
 <body>
-  <div class="app-shell">
+  <div class="app-shell" id="appShell">
+    
+    <!-- HEADER -->
     <header class="px-4 md:px-8 py-5 flex items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <div class="w-11 h-11 rounded-2xl bg-blue-600 text-white grid place-items-center">
@@ -107,35 +128,29 @@
       </div>
     </header>
 
-    <main class="px-4 md:px-8 pb-10">
-      <section class="surface p-4 md:p-5 mb-5">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h3 class="font-bold">이동 유형 선택</h3>
-            <p class="text-xs muted mt-1">나에게 맞는 이동 방식을 선택하세요.</p>
-          </div>
-        </div>
-        <div class="grid grid-cols-3 gap-2 md:gap-3">
-          <button class="mode-card active" data-mode="wheelchair">
-            <div class="text-2xl mb-2">♿</div>
-            <div class="font-bold text-sm">휠체어</div>
-          </button>
-          <button class="mode-card" data-mode="stroller">
-            <div class="text-2xl mb-2">👶</div>
-            <div class="font-bold text-sm">유모차</div>
-          </button>
-          <button class="mode-card" data-mode="elderly">
-            <div class="text-2xl mb-2">🚶</div>
-            <div class="font-bold text-sm">고령자</div>
-          </button>
+    <main class="px-4 md:px-8 pb-10 flex-1 flex flex-col gap-5">
+
+      <!-- INTRO -->
+      <section class="intro-section">
+        <h2 class="text-2xl md:text-3xl font-black leading-tight mb-2">
+          더 안전하고 편리한<br /><span class="text-blue-600">이동 경로를 찾아보세요.</span>
+        </h2>
+        <p class="muted text-sm">이동 환경에 맞는 경로를 검색하고 접근성 정보를 확인하세요.</p>
+      </section>
+
+      <!-- MODE SELECT -->
+      <section class="surface p-4 mode-section">
+        <h3 class="font-bold mb-3">이동 유형 선택</h3>
+        <div class="grid grid-cols-3 gap-2">
+          <button class="mode-card active" data-mode="wheelchair">♿<br><span class="font-bold text-sm">휠체어</span></button>
+          <button class="mode-card" data-mode="stroller">👶<br><span class="font-bold text-sm">유모차</span></button>
+          <button class="mode-card" data-mode="elderly">🚶<br><span class="font-bold text-sm">고령자</span></button>
         </div>
       </section>
 
-      <section class="surface p-4 md:p-5 mb-5">
-        <div class="flex items-center gap-2 mb-4">
-          <i data-lucide="map-pin" class="w-5 h-5 text-blue-600"></i>
-          <h3 class="font-bold">목적지 설정 및 길안내</h3>
-        </div>
+      <!-- SEARCH & START -->
+      <section class="surface p-4" id="sidebar-section">
+        <h3 class="font-bold mb-3 flex items-center gap-2"><i data-lucide="map-pin" class="w-5 h-5 text-blue-600"></i> 목적지 설정 및 길안내</h3>
         <div class="space-y-3">
           <div class="flex gap-2">
             <input id="destinationInput" type="text" placeholder="목적지를 입력하세요. 예: 노원역, 의정부역" class="w-full rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-sm outline-none focus:border-blue-500" autocomplete="off" />
@@ -144,7 +159,7 @@
           <button id="startRouteBtn" class="primary-btn w-full flex items-center justify-center gap-2 !py-3.5 text-base shadow-lg">
             <i data-lucide="navigation" class="w-5 h-5"></i> 무장애 안전 길안내 시작
           </button>
-          <div class="flex flex-wrap gap-2 pt-1">
+          <div class="flex gap-2">
             <button id="gpsBtn" class="secondary-btn flex items-center gap-2 text-sm"><i data-lucide="locate-fixed" class="w-4 h-4"></i> 현재 위치</button>
             <button id="resetBtn" class="secondary-btn flex items-center gap-2 text-sm"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> 초기화</button>
           </div>
@@ -152,15 +167,37 @@
         </div>
       </section>
 
-      <section class="surface p-3 md:p-4 mb-5">
-        <div class="flex items-center justify-between px-1 mb-3">
+      <!-- MAP SECTION -->
+      <section class="surface p-3 md:p-4 flex-1 flex flex-col relative" id="map-container">
+        
+        <!-- Live Navigation Top Overlay Card (Hidden by default) -->
+        <div id="navTopCard" class="nav-top-card hidden">
+          <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white grid place-items-center shrink-0">
+            <i data-lucide="arrow-up-right" class="w-7 h-7"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div id="navInstruction" class="text-lg font-black truncate">안내를 시작합니다</div>
+            <div id="navSubInfo" class="text-xs muted">목적지까지 안전하게 이동하세요</div>
+          </div>
+        </div>
+
+        <!-- Live Navigation Bottom Exit Bar (Hidden by default) -->
+        <div id="navBottomBar" class="nav-bottom-bar hidden">
+          <span id="navTimeDist">-- km • --분</span>
+          <button id="stopNavBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full grid place-items-center" title="안내 종료">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between px-1 mb-3" id="mapHeaderInfo">
           <h3 class="font-bold">실시간 지도</h3>
           <span class="text-xs flex items-center gap-2 muted">
             <span id="gpsDot" class="status-dot"></span>
             <span id="gpsStatus">GPS 대기 중</span>
           </span>
         </div>
-        <div class="relative">
+
+        <div class="relative flex-1">
           <div id="map"></div>
           <div class="map-overlay">
             <button id="zoomInBtn" class="map-control"><i data-lucide="plus" class="w-5 h-5"></i></button>
@@ -170,8 +207,9 @@
         </div>
       </section>
 
-      <section class="surface p-4 md:p-5 mb-5">
-        <h3 class="font-bold mb-4">경로 정보</h3>
+      <!-- ROUTE INFO -->
+      <section class="surface p-4 route-info-section">
+        <h3 class="font-bold mb-3">경로 정보</h3>
         <div class="grid grid-cols-2 gap-3">
           <div class="rounded-2xl p-4 bg-slate-50 dark:bg-slate-800">
             <div class="text-xs muted mb-2">이동 거리</div>
@@ -185,20 +223,24 @@
         <p id="routeMessage" class="text-xs muted mt-3">출발지와 목적지를 설정하면 경로를 검색할 수 있습니다.</p>
       </section>
 
-      <section class="rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-5 md:p-7 mb-5">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-5">
+      <!-- AI SCANNER -->
+      <section class="rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-5 scanner-section">
+        <div class="flex items-center justify-between gap-5">
           <div>
-            <h3 class="text-xl md:text-2xl font-black mb-2">주변 환경을 확인해 보세요.</h3>
+            <h3 class="text-xl font-black mb-1">주변 환경을 확인해 보세요.</h3>
             <p class="text-sm text-blue-100">카메라를 활용한 장애물 인식 데모 화면입니다.</p>
           </div>
-          <button id="scannerBtn" class="bg-white text-blue-700 rounded-xl px-5 py-3 font-bold flex items-center justify-center gap-2">
+          <button id="scannerBtn" class="bg-white text-blue-700 rounded-xl px-4 py-3 font-bold flex items-center gap-2 shrink-0">
             <i data-lucide="camera" class="w-5 h-5"></i> AI Scanner
           </button>
         </div>
       </section>
     </main>
+
+    <footer class="px-4 pb-7 text-center muted text-xs footer-section">© 2026 BF-Way. Barrier-Free Navigation.</footer>
   </div>
 
+  <!-- MODAL -->
   <div id="scannerModal" class="modal-backdrop">
     <div class="modal-card">
       <div class="flex items-center justify-between mb-5">
@@ -207,10 +249,7 @@
       </div>
       <div class="scanner-preview mb-4">
         <div class="scanner-line"></div>
-        <div class="text-center">
-          <i data-lucide="scan" class="w-14 h-14 mx-auto mb-2"></i>
-          <p class="font-bold">AI Scanner Preview (DEMO)</p>
-        </div>
+        <div class="text-center"><i data-lucide="scan" class="w-14 h-14 mx-auto mb-2"></i><p class="font-bold">AI Scanner Preview (DEMO)</p></div>
       </div>
       <button id="closeScannerBottomBtn" class="primary-btn w-full">확인</button>
     </div>
@@ -250,28 +289,16 @@
       }
       $("gpsDot").classList.add("online");
       $("gpsStatus").textContent = "GPS 연결됨";
-      if (acc) setStatus(`현재 위치 확인 완료 (정확도 약 ${Math.round(acc)}m)`, "success");
     }
 
     function startGPS() {
       if (!navigator.geolocation) { setStatus("위치 서비스를 지원하지 않습니다.", "error"); return; }
-      $("gpsBtn").disabled = true;
-      $("gpsBtn").textContent = "위치 확인 중...";
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
           map.setView(currentPosition, 16);
-          $("gpsBtn").disabled = false;
-          $("gpsBtn").innerHTML = '<i data-lucide="locate-fixed" class="w-4 h-4"></i> 현재 위치';
-          if (!gpsWatchId) {
-            gpsWatchId = navigator.geolocation.watchPosition((p) => updateUserLocation(p.coords.latitude, p.coords.longitude, p.coords.accuracy));
-          }
         },
-        (err) => {
-          setStatus("현재 위치를 확인하지 못했습니다.", "error");
-          $("gpsBtn").disabled = false;
-          $("gpsBtn").innerHTML = '<i data-lucide="locate-fixed" class="w-4 h-4"></i> 현재 위치';
-        },
+        (err) => { setStatus("현재 위치를 확인하지 못했습니다.", "error"); },
         { enableHighAccuracy: true, timeout: 15000 }
       );
     }
@@ -300,7 +327,7 @@
         if (destinationMarker) map.removeLayer(destinationMarker);
         destinationMarker = L.marker(destinationPosition, { icon: destinationIcon }).addTo(map).bindPopup(r.display_name);
         map.setView(destinationPosition, 15);
-        setStatus("목적지를 찾았습니다.", "success");
+        setStatus("목적지를 찾았습니다. '무장애 안전 길안내 시작'을 누르세요.", "success");
       } catch (e) {
         setStatus(e.message, "error");
       } finally {
@@ -310,8 +337,8 @@
       }
     }
 
-    // Reliable Distance Calculation (Haversine formula)
-    function calculateRouteLocally() {
+    // Start Live Navigation Mode
+    function startLiveNavigation() {
       if (!currentPosition) {
         alert("먼저 '현재 위치' 버튼을 눌러 GPS를 켜주세요!");
         startGPS();
@@ -324,29 +351,43 @@
 
       if (routeLayer) map.removeLayer(routeLayer);
 
-      // Draw route line
       routeLayer = L.polyline([currentPosition, destinationPosition], { color: '#16a34a', weight: 6, opacity: 0.9 }).addTo(map);
-      map.fitBounds(routeLayer.getBounds(), { padding: [45, 45] });
+      map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
 
-      // Calculate distance in km
       const lat1 = currentPosition[0], lon1 = currentPosition[1];
       const lat2 = destinationPosition[0], lon2 = destinationPosition[1];
       const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLon = (lon2 - lon1) * Math.PI / 180;
       const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const distKm = R * c;
-
-      // Time calculation (Walking speed ~ 4 km/h)
+      const distKm = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
       const totalMinutes = Math.max(1, Math.round((distKm / 4) * 60));
 
-      $("distanceValue").textContent = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(2)} km`;
-      $("timeValue").textContent = totalMinutes >= 60 ? `${Math.floor(totalMinutes/60)}시간 ${totalMinutes%60}분` : `${totalMinutes}분`;
-      $("routeMessage").textContent = "무장애 안전 경로 안내가 시작되었습니다.";
+      const distText = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(2)} km`;
+      const timeText = totalMinutes >= 60 ? `${Math.floor(totalMinutes/60)}시간 ${totalMinutes%60}분` : `${totalMinutes}분`;
+
+      $("distanceValue").textContent = distText;
+      $("timeValue").textContent = timeText;
+
+      // ENTER FULLSCREEN NAVIGATION MODE (Like Naver/Kakao Map)
+      document.body.classList.add("nav-mode");
+      $("navTopCard").classList.remove("hidden");
+      $("navBottomBar").classList.remove("hidden");
+      $("navInstruction").textContent = `${$("destinationInput").value} 방면으로 이동`;
+      $("navSubInfo").textContent = `무장애 안전 경로 • 남은 거리 ${distText}`;
+      $("navTimeDist").textContent = `${distText} • ${timeText}`;
+
+      setTimeout(() => map.invalidateSize(), 200);
     }
 
-    // Modal Events
+    // Stop Live Navigation Mode
+    function stopLiveNavigation() {
+      document.body.classList.remove("nav-mode");
+      $("navTopCard").classList.add("hidden");
+      $("navBottomBar").classList.add("hidden");
+      setTimeout(() => map.invalidateSize(), 200);
+    }
+
     $("scannerBtn").addEventListener("click", () => $("scannerModal").classList.add("show"));
     $("closeScannerBtn").addEventListener("click", () => $("scannerModal").classList.remove("show"));
     $("closeScannerBottomBtn").addEventListener("click", () => $("scannerModal").classList.remove("show"));
@@ -357,17 +398,20 @@
 
     $("gpsBtn").addEventListener("click", startGPS);
     $("searchBtn").addEventListener("click", findDestination);
-    $("startRouteBtn").addEventListener("click", calculateRouteLocally);
+    $("startRouteBtn").addEventListener("click", startLiveNavigation);
+    $("stopNavBtn").addEventListener("click", stopLiveNavigation);
     $("destinationInput").addEventListener("keydown", (e) => e.key === "Enter" && findDestination());
+    
     $("resetBtn").addEventListener("click", () => {
       $("destinationInput").value = "";
       if (destinationMarker) { map.removeLayer(destinationMarker); destinationMarker = null; }
       if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
       $("distanceValue").textContent = "--";
       $("timeValue").textContent = "--";
-      $("routeMessage").textContent = "초기화되었습니다.";
+      stopLiveNavigation();
     });
 
+    startGPS();
     lucide.createIcons();
   </script>
 </body>
