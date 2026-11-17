@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>B my map - 이동약자를 위한 길찾기 서비스</title>
+    <title>BF-Way - 무장애 길찾기 서비스</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Leaflet CSS -->
@@ -19,9 +19,13 @@
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.5; transform: scale(1.05); }
         }
+        /* Grayscale / High Contrast Accessibility Mode */
+        .grayscale-mode {
+            filter: grayscale(100%) contrast(150%) !important;
+        }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans h-screen flex flex-col overflow-hidden">
+<body id="app-body" class="bg-slate-900 text-slate-100 font-sans h-screen flex flex-col overflow-hidden transition duration-300">
 
     <!-- Header -->
     <header class="bg-slate-800 border-b border-slate-700 px-4 py-2.5 flex justify-between items-center shadow-lg shrink-0">
@@ -30,17 +34,24 @@
                 <i class="fa-solid fa-wheelchair text-base"></i>
             </div>
             <div>
-                <h1 class="text-base font-bold tracking-wide text-emerald-400 leading-tight">B my map</h1>
-                <p class="text-[10px] text-slate-400">이동약자의 이동권 보장 길찾기</p>
+                <h1 class="text-base font-bold tracking-wide text-emerald-400 leading-tight">BF-Way</h1>
+                <p class="text-[10px] text-slate-400">AI 기반 무장애 길찾기 플랫폼</p>
             </div>
         </div>
-        <button onclick="toggleScanner()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center space-x-1 shadow transition">
-            <i class="fa-solid fa-camera"></i>
-            <span>AI 스캐너</span>
-        </button>
+        <div class="flex items-center space-x-2">
+            <!-- Grayscale Toggle Button -->
+            <button onclick="toggleGrayscale()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center space-x-1 shadow transition border border-slate-600" title="고대비 흑백 모드">
+                <i class="fa-solid fa-circle-half-stroke"></i>
+                <span class="hidden sm:inline">흑백모드</span>
+            </button>
+            <button onclick="toggleScanner()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center space-x-1 shadow transition">
+                <i class="fa-solid fa-camera"></i>
+                <span>AI 스캐너</span>
+            </button>
+        </div>
     </header>
 
-    <!-- Main Container (Flex Layout for Mobile & Desktop) -->
+    <!-- Main Container -->
     <main class="flex-1 flex flex-col md:flex-row p-2 gap-2 overflow-hidden max-w-7xl mx-auto w-full">
         
         <!-- Sidebar / Control Panel -->
@@ -76,14 +87,14 @@
                     <div class="relative">
                         <i class="fa-solid fa-flag-checkered absolute left-2.5 top-2.5 text-rose-400 text-xs"></i>
                         <select id="destination-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-2 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
-                            <option value="office">중랑구청 (안심 경로)</option>
+                            <option value="office">중랑구청 (계단 없는 안전 경로)</option>
                             <option value="park">중화근린공원 (완만 경사)</option>
                             <option value="station">신내역 (엘리베이터 우선)</option>
                         </select>
                     </div>
                     <button onclick="calculateRoute()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 font-bold py-2 px-3 rounded-lg shadow transition flex items-center justify-center space-x-1.5 text-xs">
                         <i class="fa-solid fa-route"></i>
-                        <span>안전 경로 찾기</span>
+                        <span>무장애 안전 경로 찾기</span>
                     </button>
                 </div>
 
@@ -98,19 +109,19 @@
                         <span class="font-bold text-slate-200" id="info-time">52분</span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-slate-400 text-[11px]">장애물:</span>
-                        <span class="font-bold text-emerald-400">0개 (무장애)</span>
+                        <span class="text-slate-400 text-[11px]">계단/장애물:</span>
+                        <span class="font-bold text-emerald-400">0개 (완벽 무장애)</span>
                     </div>
                 </div>
             </div>
 
             <!-- Footer info -->
             <div class="text-center text-[10px] text-slate-500 pt-1 border-t border-slate-700">
-                <p>제4회 유니버설디자인 아이디어 대전 최우수상</p>
+                <p>BF-Way Platform v1.0 • PostGIS + A* + YOLO</p>
             </div>
         </section>
 
-        <!-- Map View Area (Expanded to Fill Screen) -->
+        <!-- Map View Area -->
         <section class="flex-1 bg-slate-800 border border-slate-700 rounded-xl p-1.5 relative shadow-lg min-h-[250px] md:min-h-full">
             <div id="map"></div>
         </section>
@@ -137,7 +148,7 @@
                     </div>
                     <p class="text-xs text-slate-300">카메라 작동 중. 전방 도로 상태 스캔 중...</p>
                     <div class="bg-rose-500/20 border border-rose-500/50 text-rose-300 text-[11px] px-3 py-1.5 rounded-lg inline-block">
-                        ⚠️ 주의: 전방 15m 지점에 높은 턱 감지됨! 우회 경로 안내
+                        ⚠️ 주의: 전방 15m 지점에 높은 턱(계단) 감지됨! 우회 경로 안내
                     </div>
                 </div>
             </div>
@@ -151,7 +162,7 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Initialize Map centered around Jungnang-gu, Seoul
+        // Initialize Map
         const map = L.map('map').setView([37.595, 127.092], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -195,11 +206,12 @@
                 map.removeLayer(routeLayer);
             }
 
+            // High visibility bright neon route line for wheelchair users
             routeLayer = L.polyline([
                 [37.595, 127.092],
                 [37.598, 127.095],
                 destCoords
-            ], {color: '#10b981', weight: 5, opacity: 0.8}).addTo(map);
+            ], {color: '#00ffcc', weight: 6, opacity: 0.9}).addTo(map);
 
             map.fitBounds(routeLayer.getBounds(), {padding: [30, 30]});
 
@@ -208,7 +220,18 @@
             document.getElementById('info-time').innerText = timeText;
         }
 
-        // Fix map size render bug inside flexbox
+        // Grayscale / High Contrast Toggle Function
+        function toggleGrayscale() {
+            const body = document.getElementById('app-body');
+            body.classList.toggle('grayscale-mode');
+        }
+
+        function toggleScanner() {
+            const modal = document.getElementById('scanner-modal');
+            modal.classList.toggle('hidden');
+            modal.classList.toggle('flex');
+        }
+
         setTimeout(() => { map.invalidateSize(); }, 300);
     </script>
 </body>
