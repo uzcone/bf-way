@@ -216,7 +216,7 @@
             <div id="distanceValue" class="text-2xl font-black">--</div>
           </div>
           <div class="rounded-2xl p-4 bg-slate-50 dark:bg-slate-800">
-            <div class="text-xs muted mb-2">예상 시간</div>
+            <div class="text-xs muted mb-2">예상 시간 (휠체어/보행)</div>
             <div id="timeValue" class="text-2xl font-black">--</div>
           </div>
         </div>
@@ -280,6 +280,7 @@
       el.className = "text-xs mt-1 " + (type === "error" ? "text-red-500" : type === "success" ? "text-green-600" : "muted");
     }
 
+    // REAL-TIME CONTINUOUS GPS TRACKING (Moves with user)
     function updateUserLocation(lat, lng, acc) {
       currentPosition = [lat, lng];
       if (!userMarker) {
@@ -293,6 +294,8 @@
 
     function startGPS() {
       if (!navigator.geolocation) { setStatus("위치 서비스를 지원하지 않습니다.", "error"); return; }
+      
+      // Initial position fix
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
@@ -301,6 +304,17 @@
         (err) => { setStatus("현재 위치를 확인하지 못했습니다.", "error"); },
         { enableHighAccuracy: true, timeout: 15000 }
       );
+
+      // Continuous tracking as user walks
+      if (gpsWatchId === null) {
+        gpsWatchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+          },
+          (err) => { console.warn("GPS watch error: ", err); },
+          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        );
+      }
     }
 
     document.querySelectorAll("[data-mode]").forEach((btn) => {
@@ -337,7 +351,7 @@
       }
     }
 
-    // Fetch real road routing from OSRP (Open Source Routing Machine) to avoid going through buildings
+    // REAL PEDESTRIAN ROUTING WITH ACCURATE WHEELCHAIR/WALKING TIME
     async function startLiveNavigation() {
       if (!currentPosition) {
         alert("먼저 '현재 위치' 버튼을 눌러 GPS를 켜주세요!");
@@ -357,21 +371,22 @@
       const destLat = destinationPosition[0];
 
       try {
-        // Request routing strictly along actual pedestrian roads
         const osrmUrl = `https://router.project-osrm.org/route/v1/foot/${startLon},${startLat};${destLon},${destLat}?overview=full&geometries=geojson`;
         const response = await fetch(osrmUrl);
         const data = await response.json();
 
         if (data.code === "Ok" && data.routes && data.routes.length > 0) {
           const route = data.routes[0];
-          // OSRM returns coordinates as [lon, lat], convert to Leaflet's [lat, lon]
           const latLngs = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
 
           routeLayer = L.polyline(latLngs, { color: '#2563eb', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(map);
           map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
 
           const distKm = route.distance / 1000;
-          const totalMinutes = Math.max(1, Math.round(route.duration / 60));
+          
+          // Accurate speed adjustment for Wheelchair/Elderly (approx 3 km/h instead of normal 4.5 km/h)
+          const speedKmH = selectedMode === 'wheelchair' ? 2.5 : selectedMode === 'elderly' ? 3.0 : 4.0;
+          const totalMinutes = Math.max(1, Math.round((distKm / speedKmH) * 60));
 
           const distText = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(2)} km`;
           const timeText = totalMinutes >= 60 ? `${Math.floor(totalMinutes/60)}시간 ${totalMinutes%60}분` : `${totalMinutes}분`;
@@ -383,7 +398,7 @@
           document.body.classList.add("nav-mode");
           $("navTopCard").classList.remove("hidden");
           $("navBottomBar").classList.remove("hidden");
-          $("navInstruction",).textContent = `${$("destinationInput").value} 방면으로 이동`;
+          $("navInstruction").textContent = `${$("destinationInput").value} 방면으로 이동`;
           $("navSubInfo").textContent = `무장애 안전 경로 • 남은 거리 ${distText}`;
           $("navTimeDist").textContent = `${distText} • ${timeText}`;
 
@@ -391,15 +406,8 @@
           return;
         }
       } catch (err) {
-        console.warn("OSRM routing failed, falling back to direct line:", err);
+        console.warn("OSRM routing failed:", err);
       }
-
-      // Fallback if network fails
-      routeLayer = L.polyline([currentPosition, destinationPosition], { color: '#2563eb', weight: 6, opacity: 0.9 }).addTo(map);
-      map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
-      document.body.classList.add("nav-mode");
-      $("navTopCard").classList.remove("hidden");
-      $("navBottomBar").classList.remove("hidden");
     }
 
     function stopLiveNavigation() {
