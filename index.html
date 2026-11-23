@@ -1,447 +1,1020 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#f8fafc" />
-  <title>BF-Way | Barrier-Free Navigation</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarrierFree-Way (BF-Way) | AI 배리어프리 내비게이션</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', 'Inter', sans-serif;
+            transition: background-color 0.25s ease, color 0.25s ease;
+        }
 
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+        /* 고대비 접근성 모드 (NFR-03) */
+        body.high-contrast {
+            background-color: #000000 !important;
+            color: #FFFF00 !important;
+        }
+        body.high-contrast .hc-card {
+            background-color: #0a0a0a !important;
+            border: 2px solid #FFFF00 !important;
+            color: #FFFF00 !important;
+            box-shadow: none !important;
+        }
+        body.high-contrast .hc-subcard {
+            background-color: #141414 !important;
+            border: 1px solid #00FFFF !important;
+            color: #FFFFFF !important;
+        }
+        body.high-contrast .hc-text-muted {
+            color: #00FFFF !important;
+        }
+        body.high-contrast input,
+        body.high-contrast select {
+            background-color: #000000 !important;
+            color: #FFFF00 !important;
+            border: 2px solid #FFFF00 !important;
+        }
+        body.high-contrast .hc-btn-primary {
+            background-color: #FFFF00 !important;
+            color: #000000 !important;
+            font-weight: 800 !important;
+            border: 2px solid #FFFFFF !important;
+        }
 
-  <!-- Leaflet Map -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        /* SVG 경로 애니메이션 */
+        @keyframes dashFlow {
+            to {
+                stroke-dashoffset: -24;
+            }
+        }
+        .safe-route-line {
+            stroke-dasharray: 8 4;
+            animation: dashFlow 1.2s linear infinite;
+        }
 
-  <!-- Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <style>
-    :root {
-      --primary: #2563eb;
-      --primary-light: #eff6ff;
-      --bg: #f8fafc;
-      --surface: #ffffff;
-      --text: #0f172a;
-      --muted: #64748b;
-      --border: #e2e8f0;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; background: var(--bg); color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
-      transition: background .25s, color .25s;
-    }
-    button, input { font: inherit; }
-    button { cursor: pointer; }
-    .app-shell { max-width: 1440px; margin: auto; min-height: 100vh; display: flex; flex-direction: column; }
-    .surface { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; }
-    .muted { color: var(--muted); }
-    .primary-btn {
-      background: var(--primary); color: white; border-radius: 14px;
-      padding: 13px 18px; font-weight: 700; transition: .2s;
-    }
-    .primary-btn:hover { filter: brightness(.94); transform: translateY(-1px); }
-    .secondary-btn {
-      background: var(--surface); color: var(--text); border: 1px solid var(--border);
-      border-radius: 12px; padding: 11px 14px; font-weight: 600;
-    }
-    .mode-card {
-      border: 1px solid var(--border); background: var(--surface);
-      border-radius: 15px; padding: 13px 9px; text-align: center; transition: .2s; min-width: 0;
-    }
-    .mode-card.active {
-      border: 2px solid var(--primary); background: var(--primary-light); color: var(--primary); padding: 12px 8px;
-    }
-    #map { flex: 1; width: 100%; border-radius: 18px; z-index: 1; background: #e2e8f0; min-height: 400px; }
-    
-    /* Navigation Live Mode Overlay Style */
-    .nav-mode #sidebar-section, .nav-mode header, .nav-mode footer, .nav-mode .intro-section, .nav-mode .mode-section, .nav-mode .scanner-section, .nav-mode .disclaimer-section {
-      display: none !important;
-    }
-    .nav-mode .app-shell { padding: 0 !important; height: 100vh; display: flex; flex-direction: column; }
-    .nav-mode #map-container { flex: 1; padding: 0; border-radius: 0; border: none; height: 100vh; }
-    .nav-mode #map { height: 100vh !important; border-radius: 0; }
-
-    .nav-top-card {
-      position: absolute; top: 16px; left: 16px; right: 16px; z-index: 1000;
-      background: white; border-radius: 18px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-      display: flex; align-items: center; gap: 14px; color: #0f172a;
-    }
-    .nav-bottom-bar {
-      position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000;
-      background: #0f172a; color: white; padding: 12px 24px; border-radius: 30px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 16px; font-weight: bold;
-    }
-
-    .map-overlay { position: absolute; z-index: 500; top: 100px; right: 16px; display: flex; flex-direction: column; gap: 8px; }
-    .map-control {
-      width: 42px; height: 42px; display: grid; place-items: center;
-      border-radius: 12px; background: white; color: #0f172a; box-shadow: 0 2px 10px #00000018;
-    }
-    .status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; background: #94a3b8; }
-    .status-dot.online { background: #22c55e; box-shadow: 0 0 0 4px #22c55e20; }
-    .loader {
-      width: 18px; height: 18px; border: 2px solid #ffffff70; border-top-color: white;
-      border-radius: 50%; animation: spin .7s linear infinite; display: inline-block;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .modal-backdrop {
-      position: fixed; inset: 0; background: #0f172a99; z-index: 2000;
-      display: none; align-items: center; justify-content: center; padding: 18px;
-    }
-    .modal-backdrop.show { display: flex; }
-    .modal-card { width: 100%; max-width: 460px; background: var(--surface); color: var(--text); border-radius: 24px; padding: 24px; box-shadow: 0 20px 60px #00000030; }
-    .scanner-preview {
-      min-height: 190px; border-radius: 18px; background: linear-gradient(135deg, #dbeafe, #eff6ff);
-      display: flex; align-items: center; justify-content: center; color: #2563eb; position: relative; overflow: hidden;
-    }
-    .scanner-line {
-      position: absolute; left: 0; right: 0; height: 2px; background: #2563eb;
-      box-shadow: 0 0 15px #2563eb; animation: scan 2.5s ease-in-out infinite;
-    }
-    @keyframes scan { 0%, 100% { top: 15%; } 50% { top: 85%; } }
-    .dark { --bg: #0f172a; --surface: #1e293b; --text: #f8fafc; --muted: #94a3b8; --border: #334155; --primary-light: #1e3a8a; }
-    .dark .map-control { background: #1e293b; color: white; }
-    .dark .nav-top-card { background: #1e293b; color: white; }
-    .grayscale { filter: grayscale(1); }
-  </style>
+        @keyframes pulseRing {
+            0% { transform: scale(0.85); opacity: 0.9; }
+            70% { transform: scale(1.6); opacity: 0; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+        .user-pulse {
+            transform-origin: center;
+            transform-box: fill-box;
+            animation: pulseRing 1.8s infinite;
+        }
+    </style>
 </head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
 
-<body>
-  <div class="app-shell" id="appShell">
-    
-    <!-- HEADER -->
-    <header class="px-4 md:px-8 py-5 flex items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="w-11 h-11 rounded-2xl bg-blue-600 text-white grid place-items-center">
-          <i data-lucide="accessibility" class="w-7 h-7"></i>
+    <!-- 상단 헤더 (Header) -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 hc-card">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+            <!-- 로고 및 프로젝트명 -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-extrabold tracking-tight">BarrierFree-Way <span class="text-emerald-600 hc-text-muted">(BF-Way)</span></h1>
+                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">v1.5 Live</span>
+                    </div>
+                    <p class="text-xs text-slate-500 hc-text-muted">교통약자를 위한 AI 기반 맞춤형 배리어프리 내비게이션 플랫폼</p>
+                </div>
+            </div>
+
+            <!-- 우측 컨트롤: 뷰 전환 탭 + 고대비 접근성 모드 -->
+            <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <!-- 탭 전환기 -->
+                <div class="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200 hc-subcard" role="tablist">
+                    <button id="tab-user" onclick="switchView('user')" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-white text-emerald-700 shadow-sm transition-all">
+                        사용자 내비게이션 (User App)
+                    </button>
+                    <button id="tab-admin" onclick="switchView('admin')" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 transition-all">
+                        관리자 대시보드 (Admin Operator)
+                    </button>
+                </div>
+
+                <!-- 고대비 UI 모드 토글 (NFR-03) -->
+                <button id="btn-contrast" onclick="toggleHighContrast()" aria-pressed="false"
+                    class="px-3 py-2 rounded-xl border border-slate-300 bg-slate-900 text-yellow-300 text-xs sm:text-sm font-bold flex items-center gap-1.5 hover:bg-slate-800 transition-all shadow-sm">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14V4a6 6 0 010 12z"/>
+                    </svg>
+                    <span id="contrast-label">고대비 UI 모드</span>
+                </button>
+            </div>
         </div>
-        <div>
-          <h1 class="text-xl font-black tracking-tight">BF-Way</h1>
-          <p class="text-xs muted">Barrier-Free Navigation</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <button id="grayscaleBtn" class="secondary-btn !p-3" title="흑백 모드"><i data-lucide="contrast" class="w-5 h-5"></i></button>
-        <button id="themeBtn" class="secondary-btn !p-3" title="다크 모드"><i data-lucide="moon" class="w-5 h-5"></i></button>
-      </div>
     </header>
 
-    <main class="px-4 md:px-8 pb-10 flex-1 flex flex-col gap-5">
+    <!-- 실시간 토스트/알림 메시지 배너 (alert 대체) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
 
-      <!-- INTRO -->
-      <section class="intro-section">
-        <h2 class="text-2xl md:text-3xl font-black leading-tight mb-2">
-          더 안전하고 편리한<br /><span class="text-blue-600">이동 경로를 찾아보세요.</span>
-        </h2>
-        <p class="muted text-sm">이동 환경에 맞는 경로를 검색하고 접근성 정보를 확인하세요.</p>
-      </section>
+    <!-- 메인 콘텐츠 컨테이너 -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-      <!-- MODE SELECT -->
-      <section class="surface p-4 mode-section">
-        <h3 class="font-bold mb-3">이동 유형 선택</h3>
-        <div class="grid grid-cols-3 gap-2">
-          <button class="mode-card active" data-mode="wheelchair">♿<br><span class="font-bold text-sm">휠체어</span></button>
-          <button class="mode-card" data-mode="stroller">👶<br><span class="font-bold text-sm">유모차</span></button>
-          <button class="mode-card" data-mode="elderly">🚶<br><span class="font-bold text-sm">고령자</span></button>
-        </div>
-      </section>
+        <!-- =========================================================
+             1. 사용자 내비게이션 뷰 (USER APP VIEW)
+             ========================================================= -->
+        <section id="view-user" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-      <!-- SEARCH & START -->
-      <section class="surface p-4" id="sidebar-section">
-        <h3 class="font-bold mb-3 flex items-center gap-2"><i data-lucide="map-pin" class="w-5 h-5 text-blue-600"></i> 목적지 설정 및 길안내</h3>
-        <div class="space-y-3">
-          <div class="flex gap-2">
-            <input id="destinationInput" type="text" placeholder="목적지를 입력하세요. 예: 노원역, 의정부역" class="w-full rounded-xl border border-slate-200 bg-transparent px-4 py-3 text-sm outline-none focus:border-blue-500" autocomplete="off" />
-            <button id="searchBtn" class="secondary-btn whitespace-nowrap flex items-center gap-2"><i data-lucide="search" class="w-4 h-4"></i> 검색</button>
-          </div>
-          <button id="startRouteBtn" class="primary-btn w-full flex items-center justify-center gap-2 !py-3.5 text-base shadow-lg">
-            <i data-lucide="navigation" class="w-5 h-5"></i> 무장애 안전 길안내 시작
-          </button>
-          <div class="flex gap-2">
-            <button id="gpsBtn" class="secondary-btn flex items-center gap-2 text-sm"><i data-lucide="locate-fixed" class="w-4 h-4"></i> 현재 위치</button>
-            <button id="resetBtn" class="secondary-btn flex items-center gap-2 text-sm"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> 초기화</button>
-          </div>
-          <p id="statusMessage" class="text-xs muted">현재 위치를 확인한 후 목적지를 검색하고 길안내를 시작하세요.</p>
-        </div>
-      </section>
+                <!-- 좌측 패널: FR-U01 프로필 설정 + FR-U02 경로 검색 + FR-U04 장애물 제보 -->
+                <div class="lg:col-span-5 space-y-6">
 
-      <!-- MAP SECTION -->
-      <section class="surface p-3 md:p-4 flex-1 flex flex-col relative" id="map-container">
-        
-        <!-- Live Navigation Top Overlay Card -->
-        <div id="navTopCard" class="nav-top-card hidden">
-          <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white grid place-items-center shrink-0">
-            <i data-lucide="arrow-up-right" class="w-7 h-7"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div id="navInstruction" class="text-lg font-black truncate">안내를 시작합니다</div>
-            <div id="navSubInfo" class="text-xs muted">무장애 안전 경로로 이동 중</div>
-          </div>
-        </div>
+                    <!-- FR-U01: 맞춤형 보행 프로필 설정 -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-base font-bold flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-extrabold flex items-center justify-center">1</span>
+                                맞춤형 보행 프로필 설정 <span class="text-xs font-normal text-slate-400 hc-text-muted">(FR-U01)</span>
+                            </h2>
+                            <span id="profile-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">전동 휠체어</span>
+                        </div>
 
-        <!-- Live Navigation Bottom Exit Bar -->
-        <div id="navBottomBar" class="nav-bottom-bar hidden">
-          <span id="navTimeDist">-- km • --분</span>
-          <button id="stopNavBtn" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full grid place-items-center" title="안내 종료">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
-        </div>
+                        <!-- 보조기기 유형 선택 버튼 -->
+                        <div class="grid grid-cols-2 gap-2.5 mb-4" id="profile-buttons">
+                            <button onclick="selectProfile('electric')" data-profile="electric"
+                                class="profile-btn p-3 rounded-xl border-2 border-emerald-600 bg-emerald-50/70 text-left transition-all hc-subcard">
+                                <div class="text-lg mb-0.5">🦼 전동 휠체어</div>
+                                <div class="text-xs text-slate-600 hc-text-muted">경사 ≤ 8° · 단차 ≤ 3.0cm</div>
+                            </button>
+                            <button onclick="selectProfile('manual')" data-profile="manual"
+                                class="profile-btn p-3 rounded-xl border border-slate-200 hover:border-emerald-400 text-left transition-all hc-subcard">
+                                <div class="text-lg mb-0.5">🦽 수동 휠체어</div>
+                                <div class="text-xs text-slate-600 hc-text-muted">경사 ≤ 5° · 단차 ≤ 1.5cm</div>
+                            </button>
+                            <button onclick="selectProfile('stroller')" data-profile="stroller"
+                                class="profile-btn p-3 rounded-xl border border-slate-200 hover:border-emerald-400 text-left transition-all hc-subcard">
+                                <div class="text-lg mb-0.5">👶 유모차</div>
+                                <div class="text-xs text-slate-600 hc-text-muted">경사 ≤ 6° · 단차 ≤ 2.0cm</div>
+                            </button>
+                            <button onclick="selectProfile('elderly')" data-profile="elderly"
+                                class="profile-btn p-3 rounded-xl border border-slate-200 hover:border-emerald-400 text-left transition-all hc-subcard">
+                                <div class="text-lg mb-0.5">🦯 고령 보행자</div>
+                                <div class="text-xs text-slate-600 hc-text-muted">경사 ≤ 7° · 단차 ≤ 2.5cm</div>
+                            </button>
+                        </div>
 
-        <div class="flex items-center justify-between px-1 mb-3" id="mapHeaderInfo">
-          <h3 class="font-bold">실시간 지도</h3>
-          <span class="text-xs flex items-center gap-2 muted">
-            <span id="gpsDot" class="status-dot"></span>
-            <span id="gpsStatus">GPS 대기 중</span>
-          </span>
-        </div>
+                        <!-- 임계값 슬라이더 미세 조정 -->
+                        <div class="grid grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-200 hc-subcard">
+                            <div>
+                                <div class="flex justify-between text-xs font-semibold mb-1">
+                                    <span>최대 허용 경사도</span>
+                                    <span id="slope-val" class="text-emerald-600 font-bold">8.0°</span>
+                                </div>
+                                <input id="slope-slider" type="range" min="3" max="10" step="0.5" value="8"
+                                    oninput="updateCustomConstraints()" class="w-full accent-emerald-600 cursor-pointer">
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-semibold mb-1">
+                                    <span>허용 단차 높이</span>
+                                    <span id="step-val" class="text-emerald-600 font-bold">3.0 cm</span>
+                                </div>
+                                <input id="step-slider" type="range" min="1" max="5" step="0.5" value="3"
+                                    oninput="updateCustomConstraints()" class="w-full accent-emerald-600 cursor-pointer">
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="relative flex-1">
-          <div id="map"></div>
-          <div class="map-overlay">
-            <button id="zoomInBtn" class="map-control"><i data-lucide="plus" class="w-5 h-5"></i></button>
-            <button id="zoomOutBtn" class="map-control"><i data-lucide="minus" class="w-5 h-5"></i></button>
-            <button id="locateMapBtn" class="map-control"><i data-lucide="crosshair" class="w-5 h-5"></i></button>
-          </div>
-        </div>
-      </section>
+                    <!-- FR-U02: 배리어프리 경로 검색 -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
+                        <h2 class="text-base font-bold flex items-center gap-2 mb-3">
+                            <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-extrabold flex items-center justify-center">2</span>
+                            배리어프리 최적 경로 검색 <span class="text-xs font-normal text-slate-400 hc-text-muted">(FR-U02)</span>
+                        </h2>
 
-      <!-- ROUTE INFO -->
-      <section class="surface p-4 route-info-section">
-        <h3 class="font-bold mb-3">경로 정보</h3>
-        <div class="grid grid-cols-2 gap-3">
-          <div class="rounded-2xl p-4 bg-slate-50 dark:bg-slate-800">
-            <div class="text-xs muted mb-2">이동 거리</div>
-            <div id="distanceValue" class="text-2xl font-black">--</div>
-          </div>
-          <div class="rounded-2xl p-4 bg-slate-50 dark:bg-slate-800">
-            <div class="text-xs muted mb-2">예상 시간 (휠체어/보행)</div>
-            <div id="timeValue" class="text-2xl font-black">--</div>
-          </div>
-        </div>
-        <p id="routeMessage" class="text-xs muted mt-3">출발지와 목적지를 설정하면 경로를 검색할 수 있습니다.</p>
-      </section>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1 hc-text-muted">출발지 (Origin)</label>
+                                <input id="input-origin" type="text" value="한국성서대학교 정문"
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1 hc-text-muted">목적지 (Destination)</label>
+                                <input id="input-dest" type="text" value="중계역 3번 출구 엘리베이터"
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            </div>
 
-      <!-- AI SCANNER -->
-      <section class="rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white p-5 scanner-section">
-        <div class="flex items-center justify-between gap-5">
-          <div>
-            <h3 class="text-xl font-black mb-1">주변 환경을 확인해 보세요.</h3>
-            <p class="text-sm text-blue-100">카메라를 활용한 장애물 인식 데모 화면입니다.</p>
-          </div>
-          <button id="scannerBtn" class="bg-white text-blue-700 rounded-xl px-4 py-3 font-bold flex items-center gap-2 shrink-0">
-            <i data-lucide="camera" class="w-5 h-5"></i> AI Scanner
-          </button>
-        </div>
-      </section>
+                            <div class="flex items-center justify-between text-xs text-slate-500 pt-1 hc-text-muted">
+                                <span>✅ 계단 가중치 ∞ (100% 배제)</span>
+                                <span>🛗 엘리베이터 환승 우선 연계</span>
+                            </div>
+
+                            <button onclick="calculateSafeRoute()"
+                                class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2 hc-btn-primary">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+                                </svg>
+                                무장애 안전 경로 탐색 (A* 연산)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- FR-U04 & FR-S01: 현장 도로 장애물 AI 사진 제보 -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-base font-bold flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-700 text-xs font-extrabold flex items-center justify-center">3</span>
+                                도로 장애물 AI 제보 <span class="text-xs font-normal text-slate-400 hc-text-muted">(FR-U04 · YOLOv8)</span>
+                            </h2>
+                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">신뢰도 ≥ 85% 즉시 차단</span>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1 hc-text-muted">발견 위치 / 도로 링크명</label>
+                                <input id="report-location" type="text" placeholder="예: 중계로 214번길 보행로 입구" value="중계로 214번길 보행로 (Link #204)"
+                                    class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1 hc-text-muted">장애물 유형 선택</label>
+                                    <select id="report-type" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                                        <option value="도로 공사 구간">🚧 도로 공사 구간</option>
+                                        <option value="높은 보도 턱">📐 높은 보도 턱 (단차 초과)</option>
+                                        <option value="보도블록 파손">🧱 보도블록 파손</option>
+                                        <option value="미등록 계단">🪜 미등록 계단</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1 hc-text-muted">현장 사진 업로드 / 시뮬레이션</label>
+                                    <label class="w-full px-3 py-2 rounded-xl border border-dashed border-slate-400 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 flex items-center justify-center gap-1.5 cursor-pointer hc-subcard">
+                                        <span>📷 사진 선택 (또는 샘플 자동)</span>
+                                        <input id="report-photo-input" type="file" accept="image/*" class="hidden" onchange="previewReportPhoto(event)">
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- AI 추론 결과 미리보기 박스 -->
+                            <div id="ai-inference-box" class="hidden p-3 rounded-xl bg-slate-900 text-white text-xs space-y-1.5">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-emerald-400">🤖 YOLOv8 객체 검출 추론 완료</span>
+                                    <span id="ai-conf-badge" class="px-2 py-0.5 rounded bg-emerald-600 font-bold">신뢰도 93.4%</span>
+                                </div>
+                                <p id="ai-inference-desc" class="text-slate-300">검출 클래스: 도로 공사 구간 · GPS 좌표(37.6482, 127.0641) 자동 매핑됨</p>
+                            </div>
+
+                            <button onclick="submitObstacleReport()"
+                                class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2 hc-btn-primary">
+                                <span>📸 원터치 촬영 및 YOLOv8 실시간 제보 전송</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 우측 패널: 인터랙티브 지도 + FR-U03 실시간 턴바이턴 내비게이션 -->
+                <div class="lg:col-span-7 space-y-6">
+
+                    <!-- 인터랙티브 SVG 배리어프리 지도 -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <div>
+                                <h2 class="text-base font-bold">실시간 배리어프리 공간 지도 <span class="text-xs font-normal text-slate-400 hc-text-muted">(PostGIS Node-Link)</span></h2>
+                                <p id="route-summary-subtitle" class="text-xs text-slate-500 hc-text-muted">한국성서대학교 정문 → 중계역 3번 출구 엘리베이터</p>
+                            </div>
+                            <!-- 범례 -->
+                            <div class="flex flex-wrap items-center gap-3 text-xs font-semibold">
+                                <span class="flex items-center gap-1.5"><span class="w-4 h-1 bg-emerald-500 inline-block rounded"></span>무장애 안전 경로</span>
+                                <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 border-t-2 border-dashed border-rose-500 inline-block"></span>계단/차단 회피</span>
+                                <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-600 inline-block"></span>엘리베이터</span>
+                            </div>
+                        </div>
+
+                        <!-- 반응형 SVG 지도 캔버스 -->
+                        <div class="relative w-full rounded-2xl overflow-hidden border border-slate-200 bg-slate-100">
+                            <svg id="bf-map-svg" viewBox="0 0 760 410" class="w-full h-auto block select-none">
+                                <!-- 배경 그리드 및 블록 -->
+                                <rect width="760" height="410" fill="#f1f5f9"/>
+                                <!-- 공원 / 건물 구역 -->
+                                <rect x="40" y="35" width="190" height="120" rx="14" fill="#e2e8f0"/>
+                                <text x="135" y="100" text-anchor="middle" fill="#64748b" font-size="13" font-weight="700">한국성서대학교 캠퍼스</text>
+
+                                <rect x="290" y="35" width="210" height="115" rx="14" fill="#dcfce7"/>
+                                <text x="395" y="98" text-anchor="middle" fill="#15803d" font-size="13" font-weight="700">당현천 무장애 데크 산책로</text>
+
+                                <rect x="540" y="35" width="180" height="115" rx="14" fill="#e2e8f0"/>
+                                <text x="630" y="98" text-anchor="middle" fill="#64748b" font-size="13" font-weight="700">상계·중계 주거단지</text>
+
+                                <rect x="270" y="255" width="230" height="120" rx="14" fill="#e2e8f0"/>
+                                <text x="385" y="320" text-anchor="middle" fill="#64748b" font-size="13" font-weight="700">중계 근린공원 (급경사 14° 구역)</text>
+
+                                <!-- 일반 보행 도로망 (회색) -->
+                                <path d="M 110 190 L 650 190" stroke="#cbd5e1" stroke-width="14" stroke-linecap="round" fill="none"/>
+                                <path d="M 255 190 L 255 340 L 530 340 L 530 190" stroke="#cbd5e1" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                                <path d="M 255 190 L 255 165 L 530 165 L 530 190" stroke="#cbd5e1" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+                                <!-- 회피된 최단 거리 (계단 & 급경사 구간 - 빨간 점선) -->
+                                <path d="M 255 190 L 530 190" stroke="#f43f5e" stroke-width="5" stroke-dasharray="8 6" fill="none"/>
+                                <g transform="translate(392, 190)">
+                                    <rect x="-64" y="-28" width="128" height="22" rx="6" fill="#ffe4e6" stroke="#f43f5e" stroke-width="1.5"/>
+                                    <text x="0" y="-13" text-anchor="middle" fill="#be123c" font-size="11" font-weight="800">⛔ 계단 24칸 (가중치 ∞)</text>
+                                </g>
+
+                                <!-- 동적 장애물 차단 표시 (신규 제보 승인 시 활성화) -->
+                                <g id="map-dynamic-obstacle" class="hidden" transform="translate(392, 340)">
+                                    <rect x="-74" y="10" width="148" height="24" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+                                    <text id="map-obstacle-label" x="0" y="26" text-anchor="middle" fill="#92400e" font-size="11" font-weight="800">🚧 공사 차단 (우회 경로)</text>
+                                </g>
+
+                                <!-- 배리어프리 안전 경로 (기본 우회 경로: 하단 완만 경사로) -->
+                                <path id="safe-path-primary"
+                                    d="M 110 190 L 255 190 L 255 340 L 530 340 L 530 190 L 650 190"
+                                    stroke="#10b981" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"
+                                    class="safe-route-line"/>
+
+                                <!-- 배리어프리 2차 우회 경로 (하단 링크 차단 시 상단 데크 우회) -->
+                                <path id="safe-path-detour"
+                                    d="M 110 190 L 255 190 L 255 165 L 530 165 L 530 190 L 650 190"
+                                    stroke="#10b981" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"
+                                    class="safe-route-line hidden"/>
+
+                                <!-- 노드 포인트: 출발지 -->
+                                <g transform="translate(110, 190)">
+                                    <circle r="11" fill="#0f172a" stroke="#ffffff" stroke-width="3"/>
+                                    <rect x="-58" y="-36" width="116" height="22" rx="6" fill="#0f172a"/>
+                                    <text x="0" y="-21" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">출발: 성서대 정문</text>
+                                </g>
+
+                                <!-- 노드 포인트: 완만 경사로 구간 -->
+                                <g id="node-ramp-badge" transform="translate(392, 340)">
+                                    <circle r="7" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+                                    <rect x="-66" y="-28" width="132" height="21" rx="6" fill="#ecfdf5" stroke="#10b981" stroke-width="1.2"/>
+                                    <text x="0" y="-14" text-anchor="middle" fill="#047857" font-size="10.5" font-weight="700">완만 경사로 (3.2° · 단차 0cm)</text>
+                                </g>
+
+                                <!-- 노드 포인트: 엘리베이터 환승 지점 -->
+                                <g transform="translate(530, 190)">
+                                    <circle r="11" fill="#2563eb" stroke="#ffffff" stroke-width="3"/>
+                                    <rect x="-54" y="-36" width="108" height="22" rx="6" fill="#1d4ed8"/>
+                                    <text x="0" y="-21" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">🛗 승강기 환승</text>
+                                </g>
+
+                                <!-- 노드 포인트: 목적지 -->
+                                <g transform="translate(650, 190)">
+                                    <circle r="12" fill="#059669" stroke="#ffffff" stroke-width="3"/>
+                                    <rect x="-62" y="16" width="124" height="22" rx="6" fill="#065f46"/>
+                                    <text x="0" y="31" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">도착: 중계역 3번출구</text>
+                                </g>
+
+                                <!-- 실시간 GPS 사용자 마커 (애니메이션 이동) -->
+                                <g id="user-gps-marker" transform="translate(110, 190)">
+                                    <circle r="16" fill="#10b981" opacity="0.35" class="user-pulse"/>
+                                    <circle r="8" fill="#10b981" stroke="#ffffff" stroke-width="2.5"/>
+                                </g>
+                            </svg>
+                        </div>
+
+                        <!-- 경로 핵심 지표 카드 (NFR-01: 응답속도 2초 이내) -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 hc-subcard">
+                                <div class="text-xs text-slate-500 hc-text-muted">총 안전 이동거리</div>
+                                <div id="metric-distance" class="text-lg font-extrabold text-slate-900 mt-0.5">680 m</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 hc-subcard">
+                                <div class="text-xs text-slate-500 hc-text-muted">예상 소요 시간</div>
+                                <div id="metric-time" class="text-lg font-extrabold text-emerald-600 mt-0.5">11 분</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 hc-subcard">
+                                <div class="text-xs text-slate-500 hc-text-muted">구간 최대 경사도</div>
+                                <div id="metric-slope" class="text-lg font-extrabold text-slate-900 mt-0.5">3.2° <span class="text-xs font-semibold text-emerald-600">(안전)</span></div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 hc-subcard">
+                                <div class="text-xs text-slate-500 hc-text-muted">A* 경로 연산 시간</div>
+                                <div id="metric-latency" class="text-lg font-extrabold text-blue-600 mt-0.5">0.38 초</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FR-U03: 실시간 턴바이턴 음성 및 진동 내비게이션 -->
+                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
+                        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                            <h2 class="text-base font-bold flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-extrabold flex items-center justify-center">4</span>
+                                실시간 턴바이턴 보행 안내 <span class="text-xs font-normal text-slate-400 hc-text-muted">(FR-U03 · GPS 1초 주기)</span>
+                            </h2>
+                            <div class="flex items-center gap-2">
+                                <button id="btn-sim-nav" onclick="advanceNavigationStep()"
+                                    class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all hc-btn-primary">
+                                    <span>▶ 다음 구간 주행 시뮬레이션 (음성/진동)</span>
+                                </button>
+                                <button onclick="resetNavigationStep()"
+                                    class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold hover:bg-slate-100">
+                                    초기화
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 현재 음성/진동 안내 배너 -->
+                        <div id="voice-banner" class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3 mb-4 hc-subcard">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center text-lg shrink-0">🔊</div>
+                                <div>
+                                    <div class="text-xs font-bold text-emerald-700 uppercase tracking-wider hc-text-muted">음성 턴바이턴 안내 (Step <span id="nav-step-num">1</span>/4)</div>
+                                    <p id="voice-instruction-text" class="text-sm sm:text-base font-bold text-slate-900 mt-0.5">
+                                        한국성서대학교 정문에서 직진 145m 이동 후 우측 무장애 경사로로 진입하세요.
+                                    </p>
+                                </div>
+                            </div>
+                            <span id="vibration-indicator" class="hidden px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 text-xs font-extrabold shrink-0 animate-bounce">
+                                📳 진동 경고
+                            </span>
+                        </div>
+
+                        <!-- 단계별 경로 타임라인 -->
+                        <ol id="turn-by-turn-list" class="space-y-2 text-sm"></ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =========================================================
+             2. 관리자 대시보드 뷰 (ADMIN OPERATOR VIEW)
+             ========================================================= -->
+        <section id="view-admin" class="hidden space-y-6">
+
+            <!-- FR-A03: 실시간 KPI 관제 카드 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
+                    <div class="text-xs font-semibold text-slate-500 hc-text-muted">누적 시민 제보 건수</div>
+                    <div class="flex items-baseline justify-between mt-2">
+                        <span id="kpi-total-reports" class="text-3xl font-extrabold">4</span>
+                        <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">+실시간 연동</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
+                    <div class="text-xs font-semibold text-slate-500 hc-text-muted">통행 차단 적용 (isBlocked=true)</div>
+                    <div class="flex items-baseline justify-between mt-2">
+                        <span id="kpi-blocked-count" class="text-3xl font-extrabold text-rose-600">2</span>
+                        <span class="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full">경로 100% 우회중</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
+                    <div class="text-xs font-semibold text-slate-500 hc-text-muted">YOLOv8 평균 탐지 신뢰도</div>
+                    <div class="flex items-baseline justify-between mt-2">
+                        <span id="kpi-avg-conf" class="text-3xl font-extrabold text-blue-600">91.8%</span>
+                        <span class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">임계치 85% 상회</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
+                    <div class="text-xs font-semibold text-slate-500 hc-text-muted">공공 GIS 공간 데이터 상태</div>
+                    <div class="flex items-baseline justify-between mt-2">
+                        <span id="kpi-gis-status" class="text-lg font-extrabold text-emerald-600">동기화 완료</span>
+                        <span id="kpi-gis-time" class="text-xs text-slate-500 hc-text-muted">2026-11-23 18:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FR-A02: 공공 GIS 데이터 동기화 & 통계 요약 바 -->
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4 hc-card">
+                <div>
+                    <h2 class="text-base font-bold">국토교통부 · 행정안전부 보행로 공간정보(GIS) 동기화 <span class="text-xs font-normal text-slate-400 hc-text-muted">(FR-A02)</span></h2>
+                    <p class="text-xs text-slate-500 mt-0.5 hc-text-muted">전국 보행자도로 단차·경사도 및 지하철 엘리베이터 가동 현황 API를 PostGIS 도로망 그래프에 반영합니다.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="btn-sync-gis" onclick="syncPublicGIS()"
+                        class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-sm transition-all flex items-center gap-2 hc-btn-primary">
+                        <svg id="gis-sync-icon" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        <span>공공 GIS 데이터 즉시 동기화</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- FR-A01: 제보 데이터 검증 및 통행 차단 승인 테이블 -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hc-card">
+                <div class="p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <h2 class="text-base font-bold">시민 제보 장애물 AI 1차 분류 및 관리자 검증 목록 <span class="text-xs font-normal text-slate-400 hc-text-muted">(FR-A01)</span></h2>
+                        <p class="text-xs text-slate-500 mt-0.5 hc-text-muted">승인(isBlocked=true) 처리 시 사용자 내비게이션 경로가 즉시 우회 경로로 재계산됩니다.</p>
+                    </div>
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-700">RBAC 관리자 권한: 인증됨</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase hc-subcard">
+                                <th class="py-3.5 px-4">제보 ID</th>
+                                <th class="py-3.5 px-4">도로 링크 / 위치</th>
+                                <th class="py-3.5 px-4">AI 검출 유형</th>
+                                <th class="py-3.5 px-4">YOLOv8 신뢰도</th>
+                                <th class="py-3.5 px-4">노드 차단 (isBlocked)</th>
+                                <th class="py-3.5 px-4">검증 상태</th>
+                                <th class="py-3.5 px-4 text-right">관리자 조치</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-reports-tbody" class="divide-y divide-slate-200 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </main>
 
-    <footer class="px-4 pb-7 text-center muted text-xs footer-section">© 2026 BF-Way. Barrier-Free Navigation.</footer>
-  </div>
+    <!-- 푸터 -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8 hc-card">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 hc-text-muted">
+            <span>© 2026 BarrierFree-Way (BF-Way) · 팀팀 (투굴두르, 토히르벡)</span>
+            <span>3-Tier Architecture: React/Web · Node.js & FastAPI (YOLOv8) · PostgreSQL/PostGIS</span>
+        </div>
+    </footer>
 
-  <!-- MODAL -->
-  <div id="scannerModal" class="modal-backdrop">
-    <div class="modal-card">
-      <div class="flex items-center justify-between mb-5">
-        <h3 class="text-lg font-black">AI 환경 스캐너</h3>
-        <button id="closeScannerBtn" class="secondary-btn !p-2"><i data-lucide="x" class="w-5 h-5"></i></button>
-      </div>
-      <div class="scanner-preview mb-4">
-        <div class="scanner-line"></div>
-        <div class="text-center"><i data-lucide="scan" class="w-14 h-14 mx-auto mb-2"></i><p class="font-bold">AI Scanner Preview (DEMO)</p></div>
-      </div>
-      <button id="closeScannerBottomBtn" class="primary-btn w-full">확인</button>
-    </div>
-  </div>
+    <script>
+        // =========================================================================
+        // 1. 애플리케이션 전역 상태 (State Management)
+        // =========================================================================
+        const state = {
+            currentView: 'user',
+            highContrast: false,
+            profile: {
+                key: 'electric',
+                label: '전동 휠체어',
+                maxSlope: 8.0,
+                maxStep: 3.0
+            },
+            navStepIndex: 0,
+            detourActive: false, // 하단 메인 경사로 차단 시 상단 데크 우회 여부
+            reports: [
+                {
+                    id: 'OBS-104',
+                    location: '중계로 214번길 보행로 (Link #204)',
+                    type: '도로 공사 구간',
+                    confidence: 94.2,
+                    isBlocked: false,
+                    status: 'PENDING',
+                    affectsMainRoute: true
+                },
+                {
+                    id: 'OBS-103',
+                    location: '중계역 2번 출구 앞 계단 연결로 (Link #102)',
+                    type: '미등록 계단',
+                    confidence: 98.5,
+                    isBlocked: true,
+                    status: 'APPROVED',
+                    affectsMainRoute: false
+                },
+                {
+                    id: 'OBS-102',
+                    location: '노원로 18길 보도블록 침하 구간 (Link #188)',
+                    type: '보도블록 파손',
+                    confidence: 89.1,
+                    isBlocked: true,
+                    status: 'APPROVED',
+                    affectsMainRoute: false
+                },
+                {
+                    id: 'OBS-101',
+                    location: '당현천 진입로 경계석 (Link #095)',
+                    type: '높은 보도 턱',
+                    confidence: 78.4,
+                    isBlocked: false,
+                    status: 'REJECTED',
+                    affectsMainRoute: false
+                }
+            ]
+        };
 
-  <script>
-    const $ = (id) => document.getElementById(id);
-    let selectedMode = "wheelchair";
-    let currentPosition = null;
-    let destinationPosition = null;
-    let userMarker = null;
-    let destinationMarker = null;
-    let routeLayer = null;
-    let gpsWatchId = null;
-    let isSearching = false;
-    const defaultCenter = [37.5665, 126.9780];
+        const profilePresets = {
+            electric: { label: '전동 휠체어', maxSlope: 8.0, maxStep: 3.0 },
+            manual:   { label: '수동 휠체어', maxSlope: 5.0, maxStep: 1.5 },
+            stroller: { label: '유모차',      maxSlope: 6.0, maxStep: 2.0 },
+            elderly:  { label: '고령 보행자', maxSlope: 7.0, maxStep: 2.5 }
+        };
 
-    const map = L.map("map", { zoomControl: false, preferCanvas: true }).setView(defaultCenter, 13);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
-    setTimeout(() => map.invalidateSize(), 300);
-
-    const userIcon = L.divIcon({ className: "", html: `<div style="width:22px;height:22px;border:4px solid white;border-radius:50%;background:#2563eb;box-shadow:0 2px 12px #0005;"></div>`, iconSize: [22, 22], iconAnchor: [11, 11] });
-    const destinationIcon = L.divIcon({ className: "", html: `<div style="width:28px;height:28px;border:3px solid white;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#ef4444;box-shadow:0 2px 12px #0004;"></div>`, iconSize: [28, 28], iconAnchor: [14, 28] });
-
-    function setStatus(msg, type="normal") {
-      const el = $("statusMessage");
-      el.textContent = msg;
-      el.className = "text-xs mt-1 " + (type === "error" ? "text-red-500" : type === "success" ? "text-green-600" : "muted");
-    }
-
-    // REAL-TIME CONTINUOUS GPS TRACKING (Moves with user)
-    function updateUserLocation(lat, lng, acc) {
-      currentPosition = [lat, lng];
-      if (!userMarker) {
-        userMarker = L.marker(currentPosition, { icon: userIcon }).addTo(map).bindPopup("현재 위치");
-      } else {
-        userMarker.setLatLng(currentPosition);
-      }
-      $("gpsDot").classList.add("online");
-      $("gpsStatus").textContent = "GPS 연결됨";
-    }
-
-    function startGPS() {
-      if (!navigator.geolocation) { setStatus("위치 서비스를 지원하지 않습니다.", "error"); return; }
-      
-      // Initial position fix
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
-          map.setView(currentPosition, 16);
-        },
-        (err) => { setStatus("현재 위치를 확인하지 못했습니다.", "error"); },
-        { enableHighAccuracy: true, timeout: 15000 }
-      );
-
-      // Continuous tracking as user walks
-      if (gpsWatchId === null) {
-        gpsWatchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            updateUserLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
-          },
-          (err) => { console.warn("GPS watch error: ", err); },
-          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-        );
-      }
-    }
-
-    document.querySelectorAll("[data-mode]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        selectedMode = btn.dataset.mode;
-        document.querySelectorAll("[data-mode]").forEach(b => b.classList.toggle("active", b === btn));
-      });
-    });
-
-    async function findDestination() {
-      const query = $("destinationInput").value.trim();
-      if (!query) { setStatus("목적지를 입력해 주세요.", "error"); return; }
-      if (isSearching) return;
-      isSearching = true;
-      $("searchBtn").innerHTML = '<span class="loader"></span>';
-
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=kr&accept-language=ko&q=${encodeURIComponent(query)}`);
-        const results = await res.json();
-        if (!results.length) throw new Error("검색 결과가 없습니다.");
-        
-        const r = results[0];
-        destinationPosition = [Number(r.lat), Number(r.lon)];
-        if (destinationMarker) map.removeLayer(destinationMarker);
-        destinationMarker = L.marker(destinationPosition, { icon: destinationIcon }).addTo(map).bindPopup(r.display_name);
-        map.setView(destinationPosition, 15);
-        setStatus("목적지를 찾았습니다. '무장애 안전 길안내 시작'을 누르세요.", "success");
-      } catch (e) {
-        setStatus(e.message, "error");
-      } finally {
-        isSearching = false;
-        $("searchBtn").innerHTML = '<i data-lucide="search" class="w-4 h-4"></i> 검색';
-        lucide.createIcons();
-      }
-    }
-
-    // REAL PEDESTRIAN ROUTING WITH ACCURATE WHEELCHAIR/WALKING TIME
-    async function startLiveNavigation() {
-      if (!currentPosition) {
-        alert("먼저 '현재 위치' 버튼을 눌러 GPS를 켜주세요!");
-        startGPS();
-        return;
-      }
-      if (!destinationPosition) {
-        alert("목적지를 먼저 검색해주세요!");
-        return;
-      }
-
-      if (routeLayer) map.removeLayer(routeLayer);
-
-      const startLon = currentPosition[1];
-      const startLat = currentPosition[0];
-      const destLon = destinationPosition[1];
-      const destLat = destinationPosition[0];
-
-      try {
-        const osrmUrl = `https://router.project-osrm.org/route/v1/foot/${startLon},${startLat};${destLon},${destLat}?overview=full&geometries=geojson`;
-        const response = await fetch(osrmUrl);
-        const data = await response.json();
-
-        if (data.code === "Ok" && data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
-          const latLngs = route.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-
-          routeLayer = L.polyline(latLngs, { color: '#2563eb', weight: 6, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }).addTo(map);
-          map.fitBounds(routeLayer.getBounds(), { padding: [60, 60] });
-
-          const distKm = route.distance / 1000;
-          
-          // Accurate speed adjustment for Wheelchair/Elderly (approx 3 km/h instead of normal 4.5 km/h)
-          const speedKmH = selectedMode === 'wheelchair' ? 2.5 : selectedMode === 'elderly' ? 3.0 : 4.0;
-          const totalMinutes = Math.max(1, Math.round((distKm / speedKmH) * 60));
-
-          const distText = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(2)} km`;
-          const timeText = totalMinutes >= 60 ? `${Math.floor(totalMinutes/60)}시간 ${totalMinutes%60}분` : `${totalMinutes}분`;
-
-          $("distanceValue").textContent = distText;
-          $("timeValue").textContent = timeText;
-
-          // ENTER FULLSCREEN NAVIGATION MODE
-          document.body.classList.add("nav-mode");
-          $("navTopCard").classList.remove("hidden");
-          $("navBottomBar").classList.remove("hidden");
-          $("navInstruction").textContent = `${$("destinationInput").value} 방면으로 이동`;
-          $("navSubInfo").textContent = `무장애 안전 경로 • 남은 거리 ${distText}`;
-          $("navTimeDist").textContent = `${distText} • ${timeText}`;
-
-          setTimeout(() => map.invalidateSize(), 200);
-          return;
+        // =========================================================================
+        // 2. 토스트 알림 유틸리티 (alert() 대신 사용)
+        // =========================================================================
+        function showToast(title, message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const colors = {
+                success: 'bg-emerald-900 border-emerald-500 text-white',
+                warning: 'bg-amber-900 border-amber-400 text-white',
+                danger:  'bg-rose-900 border-rose-500 text-white',
+                info:    'bg-slate-900 border-slate-600 text-white'
+            };
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto p-3.5 rounded-xl border-l-4 shadow-lg transition-all transform translate-y-0 ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <div class="text-xs font-extrabold">${title}</div>
+                <div class="text-xs opacity-90 mt-0.5">${message}</div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
         }
-      } catch (err) {
-        console.warn("OSRM routing failed:", err);
-      }
-    }
 
-    function stopLiveNavigation() {
-      document.body.classList.remove("nav-mode");
-      $("navTopCard").classList.add("hidden");
-      $("navBottomBar").classList.add("hidden");
-      setTimeout(() => map.invalidateSize(), 200);
-    }
+        // =========================================================================
+        // 3. 뷰 전환 및 고대비 접근성 모드 (NFR-03)
+        // =========================================================================
+        function switchView(view) {
+            state.currentView = view;
+            const userSec = document.getElementById('view-user');
+            const adminSec = document.getElementById('view-admin');
+            const tabUser = document.getElementById('tab-user');
+            const tabAdmin = document.getElementById('tab-admin');
 
-    $("scannerBtn").addEventListener("click", () => $("scannerModal").classList.add("show"));
-    $("closeScannerBtn").addEventListener("click", () => $("scannerModal").classList.remove("show"));
-    $("closeScannerBottomBtn").addEventListener("click", () => $("scannerModal").classList.remove("show"));
+            if (view === 'user') {
+                userSec.classList.remove('hidden');
+                adminSec.classList.add('hidden');
+                tabUser.className = 'px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-white text-emerald-700 shadow-sm transition-all';
+                tabAdmin.className = 'px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 transition-all';
+            } else {
+                userSec.classList.add('hidden');
+                adminSec.classList.remove('hidden');
+                tabAdmin.className = 'px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-white text-emerald-700 shadow-sm transition-all';
+                tabUser.className = 'px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-900 transition-all';
+                renderAdminDashboard();
+            }
+        }
 
-    $("zoomInBtn").addEventListener("click", () => map.zoomIn());
-    $("zoomOutBtn").addEventListener("click", () => map.zoomOut());
-    $("locateMapBtn").addEventListener("click", () => currentPosition && map.setView(currentPosition, 17));
+        function toggleHighContrast() {
+            state.highContrast = !state.highContrast;
+            document.body.classList.toggle('high-contrast', state.highContrast);
+            const btn = document.getElementById('btn-contrast');
+            btn.setAttribute('aria-pressed', String(state.highContrast));
+            document.getElementById('contrast-label').textContent = state.highContrast ? '고대비 모드 ON' : '고대비 UI 모드';
+            showToast(
+                state.highContrast ? '고대비 접근성 모드 활성화' : '표준 UI 모드 복귀',
+                state.highContrast ? '시각 약자를 위한 고대비·고시인성 테마가 적용되었습니다.' : '기본 색상 테마로 전환되었습니다.',
+                'info'
+            );
+        }
 
-    $("gpsBtn").addEventListener("click", startGPS);
-    $("searchBtn").addEventListener("click", findDestination);
-    $("startRouteBtn").addEventListener("click", startLiveNavigation);
-    $("stopNavBtn").addEventListener("click", stopLiveNavigation);
-    $("destinationInput").addEventListener("keydown", (e) => e.key === "Enter" && findDestination());
-    
-    $("resetBtn").addEventListener("click", () => {
-      $("destinationInput").value = "";
-      if (destinationMarker) { map.removeLayer(destinationMarker); destinationMarker = null; }
-      if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
-      $("distanceValue").textContent = "--";
-      $("timeValue").textContent = "--";
-      stopLiveNavigation();
-    });
+        // =========================================================================
+        // 4. FR-U01: 보행 프로필 및 허용 임계값 설정
+        // =========================================================================
+        function selectProfile(key) {
+            const preset = profilePresets[key];
+            if (!preset) return;
 
-    startGPS();
-    lucide.createIcons();
-  </script>
+            state.profile = { key, ...preset };
+            document.getElementById('slope-slider').value = preset.maxSlope;
+            document.getElementById('step-slider').value = preset.maxStep;
+            document.getElementById('slope-val').textContent = `${preset.maxSlope.toFixed(1)}°`;
+            document.getElementById('step-val').textContent = `${preset.maxStep.toFixed(1)} cm`;
+            document.getElementById('profile-badge').textContent = preset.label;
+
+            document.querySelectorAll('.profile-btn').forEach(btn => {
+                if (btn.dataset.profile === key) {
+                    btn.className = 'profile-btn p-3 rounded-xl border-2 border-emerald-600 bg-emerald-50/70 text-left transition-all hc-subcard';
+                } else {
+                    btn.className = 'profile-btn p-3 rounded-xl border border-slate-200 hover:border-emerald-400 text-left transition-all hc-subcard';
+                }
+            });
+
+            calculateSafeRoute(false);
+            showToast('보행 프로필 업데이트', `${preset.label} 기준 (경사 ≤ ${preset.maxSlope}°, 단차 ≤ ${preset.maxStep}cm) 경로 재설정`, 'success');
+        }
+
+        function updateCustomConstraints() {
+            const slope = parseFloat(document.getElementById('slope-slider').value);
+            const step = parseFloat(document.getElementById('step-slider').value);
+            state.profile.maxSlope = slope;
+            state.profile.maxStep = step;
+            document.getElementById('slope-val').textContent = `${slope.toFixed(1)}°`;
+            document.getElementById('step-val').textContent = `${step.toFixed(1)} cm`;
+            calculateSafeRoute(false);
+        }
+
+        // =========================================================================
+        // 5. FR-U02 & FR-U03: A* 배리어프리 경로 탐색 및 턴바이턴 안내
+        // =========================================================================
+        function getNavigationSteps() {
+            const origin = document.getElementById('input-origin').value.trim() || '한국성서대학교 정문';
+            const dest = document.getElementById('input-dest').value.trim() || '중계역 3번 출구 엘리베이터';
+
+            if (state.detourActive) {
+                return [
+                    {
+                        coords: [110, 190],
+                        text: `${origin}에서 출발하여 전방 145m 직진 후 계단·공사 구간을 회피해 좌측 데크 산책로로 진입하세요.`,
+                        badge: '경사 2.4° · 계단 0칸',
+                        vibration: false
+                    },
+                    {
+                        coords: [255, 165],
+                        text: `당현천 무장애 데크 구간입니다. 폭 2.4m 평탄 보행로를 따라 275m 직진하세요.`,
+                        badge: '차단 구역 우회중',
+                        vibration: false
+                    },
+                    {
+                        coords: [530, 190],
+                        text: `전방에 경사로 합류 및 지하철 엘리베이터 환승 지점이 있습니다. 속도를 줄여주세요.`,
+                        badge: '🛗 승강기 가동 정상',
+                        vibration: true
+                    },
+                    {
+                        coords: [650, 190],
+                        text: `목적지인 ${dest}에 안전하게 도착했습니다. 안내를 종료합니다.`,
+                        badge: '도착 완료',
+                        vibration: false
+                    }
+                ];
+            }
+
+            return [
+                {
+                    coords: [110, 190],
+                    text: `${origin}에서 직진 145m 이동 후 계단 구간을 회피해 우측 완만 경사로로 진입하세요.`,
+                    badge: '계단 24칸 100% 배제',
+                    vibration: false
+                },
+                {
+                    coords: [392, 340],
+                    text: `완만 경사로 구간(경사도 3.2°, 단차 0cm) 통과 중입니다. 전방 275m 직진하세요.`,
+                    badge: `허용치(${state.profile.maxSlope}°) 이내 안전`,
+                    vibration: false
+                },
+                {
+                    coords: [530, 190],
+                    text: `주의: 전방 30m 앞 경사로 종료 지점 및 지하철 엘리베이터 환승 통로입니다.`,
+                    badge: '🛗 승강기 정상 운행',
+                    vibration: true
+                },
+                {
+                    coords: [650, 190],
+                    text: `목적지인 ${dest}에 도착했습니다. 안전 보행이 완료되었습니다.`,
+                    badge: '도착 완료',
+                    vibration: false
+                }
+            ];
+        }
+
+        function calculateSafeRoute(notify = true) {
+            const origin = document.getElementById('input-origin').value.trim() || '한국성서대학교 정문';
+            const dest = document.getElementById('input-dest').value.trim() || '중계역 3번 출구 엘리베이터';
+
+            // 동적 차단 상태 확인
+            const hasBlockingMain = state.reports.some(r => r.isBlocked && r.affectsMainRoute);
+            state.detourActive = hasBlockingMain;
+
+            document.getElementById('route-summary-subtitle').textContent = `${origin} → ${dest}`;
+
+            const primaryPath = document.getElementById('safe-path-primary');
+            const detourPath = document.getElementById('safe-path-detour');
+            const obstacleBadge = document.getElementById('map-dynamic-obstacle');
+            const rampBadge = document.getElementById('node-ramp-badge');
+
+            if (state.detourActive) {
+                primaryPath.classList.add('hidden');
+                detourPath.classList.remove('hidden');
+                obstacleBadge.classList.remove('hidden');
+                rampBadge.classList.add('hidden');
+
+                document.getElementById('metric-distance').textContent = '740 m';
+                document.getElementById('metric-time').textContent = '12 분';
+                document.getElementById('metric-slope').innerHTML = '2.4° <span class="text-xs font-semibold text-emerald-600">(우회 안전)</span>';
+            } else {
+                primaryPath.classList.remove('hidden');
+                detourPath.classList.add('hidden');
+                obstacleBadge.classList.add('hidden');
+                rampBadge.classList.remove('hidden');
+
+                document.getElementById('metric-distance').textContent = '680 m';
+                document.getElementById('metric-time').textContent = '11 분';
+                document.getElementById('metric-slope').innerHTML = '3.2° <span class="text-xs font-semibold text-emerald-600">(안전)</span>';
+            }
+
+            const latency = (0.28 + Math.random() * 0.25).toFixed(2);
+            document.getElementById('metric-latency').textContent = `${latency} 초`;
+
+            state.navStepIndex = 0;
+            renderNavigationUI();
+
+            if (notify) {
+                showToast(
+                    '무장애 경로 탐색 완료',
+                    `연산 ${latency}초 소요 · 계단 100% 배제 및 엘리베이터 동선 반영됨`,
+                    'success'
+                );
+            }
+        }
+
+        function renderNavigationUI() {
+            const steps = getNavigationSteps();
+            const current = steps[state.navStepIndex] || steps[0];
+
+            // GPS 마커 이동
+            const marker = document.getElementById('user-gps-marker');
+            marker.setAttribute('transform', `translate(${current.coords[0]}, ${current.coords[1]})`);
+
+            // 음성 안내 배너 업데이트
+            document.getElementById('nav-step-num').textContent = state.navStepIndex + 1;
+            document.getElementById('voice-instruction-text').textContent = current.text;
+
+            const vib = document.getElementById('vibration-indicator');
+            if (current.vibration) {
+                vib.classList.remove('hidden');
+            } else {
+                vib.classList.add('hidden');
+            }
+
+            // 단계별 리스트 렌더링
+            const listEl = document.getElementById('turn-by-turn-list');
+            listEl.innerHTML = steps.map((step, idx) => {
+                const isActive = idx === state.navStepIndex;
+                return `
+                    <li onclick="jumpToStep(${idx})"
+                        class="p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                            isActive
+                                ? 'border-emerald-600 bg-emerald-50/80 font-bold hc-subcard'
+                                : 'border-slate-200 hover:bg-slate-50 text-slate-600 hc-subcard'
+                        }">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-6 h-6 rounded-full text-xs font-extrabold flex items-center justify-center ${
+                                isActive ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
+                            }">${idx + 1}</span>
+                            <span class="text-xs sm:text-sm">${step.text}</span>
+                        </div>
+                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700 shrink-0">${step.badge}</span>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        function advanceNavigationStep() {
+            const steps = getNavigationSteps();
+            state.navStepIndex = (state.navStepIndex + 1) % steps.length;
+            renderNavigationUI();
+
+            const current = steps[state.navStepIndex];
+            if (current.vibration) {
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                showToast('📳 진동 및 음성 경고', '전방 경사로 전환 및 승강기 환승 구간입니다. 주의하세요.', 'warning');
+            }
+        }
+
+        function jumpToStep(idx) {
+            state.navStepIndex = idx;
+            renderNavigationUI();
+        }
+
+        function resetNavigationStep() {
+            state.navStepIndex = 0;
+            renderNavigationUI();
+        }
+
+        // =========================================================================
+        // 6. FR-U04 & FR-S01: 현장 장애물 제보 및 YOLOv8 AI 추론
+        // =========================================================================
+        function previewReportPhoto(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const type = document.getElementById('report-type').value;
+            const simConf = (88 + Math.random() * 10).toFixed(1);
+            const box = document.getElementById('ai-inference-box');
+            box.classList.remove('hidden');
+            document.getElementById('ai-conf-badge').textContent = `신뢰도 ${simConf}%`;
+            document.getElementById('ai-inference-desc').textContent = `파일(${file.name}) 분석 완료 → '${type}' 검출됨`;
+        }
+
+        function submitObstacleReport() {
+            const location = document.getElementById('report-location').value.trim() || '중계로 214번길 보행로 (Link #204)';
+            const type = document.getElementById('report-type').value;
+
+            // YOLOv8 객체 탐지 시뮬레이션 (86% ~ 97% 신뢰도)
+            const confidence = Number((86.5 + Math.random() * 11).toFixed(1));
+            const autoBlocked = confidence >= 85.0; // NFR-02: 85% 이상 시 우선 차단 플래그 적용
+
+            const box = document.getElementById('ai-inference-box');
+            box.classList.remove('hidden');
+            document.getElementById('ai-conf-badge').textContent = `신뢰도 ${confidence}%`;
+            document.getElementById('ai-inference-desc').textContent =
+                `검출 클래스: ${type} · ${autoBlocked ? '신뢰도 85% 이상으로 통행 차단(isBlocked=true) 자동 반영!' : '관리자 2차 검토 대기중'}`;
+
+            const newId = `OBS-${101 + state.reports.length}`;
+            const affectsMain = location.includes('214') || location.includes('204') || location.includes('경사로');
+
+            state.reports.unshift({
+                id: newId,
+                location,
+                type,
+                confidence,
+                isBlocked: autoBlocked,
+                status: autoBlocked ? 'APPROVED' : 'PENDING',
+                affectsMainRoute: affectsMain
+            });
+
+            if (affectsMain && autoBlocked) {
+                document.getElementById('map-obstacle-label').textContent = `🚧 ${type} (우회 적용)`;
+            }
+
+            calculateSafeRoute(false);
+            renderAdminDashboard();
+
+            showToast(
+                `🤖 YOLOv8 추론 완료 (${confidence}%)`,
+                autoBlocked
+                    ? `'${type}' 제보가 즉시 승인되어 경로에서 자동 회피됩니다.`
+                    : '제보가 접수되어 관리자 대시보드에 등록되었습니다.',
+                autoBlocked ? 'warning' : 'success'
+            );
+        }
+
+        // =========================================================================
+        // 7. FR-A01, FR-A02, FR-A03: 관리자 대시보드 렌더링 및 제어
+        // =========================================================================
+        function renderAdminDashboard() {
+            const total = state.reports.length;
+            const blocked = state.reports.filter(r => r.isBlocked).length;
+            const avgConf = (state.reports.reduce((acc, r) => acc + r.confidence, 0) / total).toFixed(1);
+
+            document.getElementById('kpi-total-reports').textContent = total;
+            document.getElementById('kpi-blocked-count').textContent = blocked;
+            document.getElementById('kpi-avg-conf').textContent = `${avgConf}%`;
+
+            const tbody = document.getElementById('admin-reports-tbody');
+            tbody.innerHTML = state.reports.map(r => {
+                const statusBadge = {
+                    APPROVED: '<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">승인됨</span>',
+                    PENDING:  '<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">검토 대기</span>',
+                    REJECTED: '<span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">반려됨</span>'
+                }[r.status];
+
+                const blockedBadge = r.isBlocked
+                    ? '<span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-rose-100 text-rose-700">true (차단)</span>'
+                    : '<span class="px-2 py-0.5 rounded text-xs font-mono font-semibold bg-slate-100 text-slate-600">false (통행)</span>';
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3.5 px-4 font-mono font-bold text-xs">${r.id}</td>
+                        <td class="py-3.5 px-4 font-medium">${r.location}</td>
+                        <td class="py-3.5 px-4 font-semibold">${r.type}</td>
+                        <td class="py-3.5 px-4">
+                            <span class="font-bold ${r.confidence >= 85 ? 'text-blue-600' : 'text-amber-600'}">${r.confidence}%</span>
+                        </td>
+                        <td class="py-3.5 px-4">${blockedBadge}</td>
+                        <td class="py-3.5 px-4">${statusBadge}</td>
+                        <td class="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                            <button onclick="verifyReport('${r.id}', true)"
+                                class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all">
+                                승인 (차단)
+                            </button>
+                            <button onclick="verifyReport('${r.id}', false)"
+                                class="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-all">
+                                해제/반려
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function verifyReport(id, approve) {
+            const report = state.reports.find(r => r.id === id);
+            if (!report) return;
+
+            report.isBlocked = approve;
+            report.status = approve ? 'APPROVED' : 'REJECTED';
+
+            if (report.affectsMainRoute && approve) {
+                document.getElementById('map-obstacle-label').textContent = `🚧 ${report.type} (관리자 차단)`;
+            }
+
+            renderAdminDashboard();
+            calculateSafeRoute(false);
+
+            showToast(
+                approve ? `노드 차단 승인 (${report.id})` : `차단 해제 처리 (${report.id})`,
+                approve
+                    ? `${report.location} 구간이 통행 차단(isBlocked=true)되어 내비게이션 경로가 우회 전환되었습니다.`
+                    : `${report.location} 구간의 통행 차단이 해제되었습니다.`,
+                approve ? 'danger' : 'info'
+            );
+        }
+
+        function syncPublicGIS() {
+            const icon = document.getElementById('gis-sync-icon');
+            icon.classList.add('animate-spin');
+            document.getElementById('kpi-gis-status').textContent = '동기화 중...';
+
+            setTimeout(() => {
+                icon.classList.remove('animate-spin');
+                const now = new Date();
+                const formatted = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                document.getElementById('kpi-gis-status').textContent = '최신 동기화 완료';
+                document.getElementById('kpi-gis-time').textContent = formatted;
+                showToast('공공 GIS 데이터 동기화 완료', '국토부·행안부 보행로 단차/경사도 및 승강기 1,248개 노드가 갱신되었습니다.', 'success');
+            }, 800);
+        }
+
+        // 초기 렌더링 실행
+        window.onload = function () {
+            calculateSafeRoute(false);
+            renderAdminDashboard();
+        };
+    </script>
 </body>
 </html>
