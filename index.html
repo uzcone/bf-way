@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarrierFree-Way (BF-Way) | AI 배리어프리 내비게이션</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Kakao Maps SDK (JavaScript Key + services library) -->
+    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9d848af2330dab0c896714b965d4d7f1&libraries=services&autoload=false"></script>
+
     <style>
         body {
             font-family: 'Noto Sans KR', 'Inter', sans-serif;
@@ -43,8 +45,8 @@
             font-weight: 800 !important;
             border: 2px solid #FFFFFF !important;
         }
-        #live-map {
-            height: 360px;
+        #kakao-map {
+            height: 380px;
             width: 100%;
             border-radius: 16px;
             z-index: 10;
@@ -66,7 +68,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <h1 class="text-lg sm:text-xl font-extrabold tracking-tight">BarrierFree-Way <span class="text-emerald-600 hc-text-muted">(BF-Way)</span></h1>
-                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">v1.6 Live GPS</span>
+                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-900">KakaoMap Live</span>
                     </div>
                     <p class="text-xs text-slate-500 hc-text-muted">교통약자를 위한 AI 기반 맞춤형 배리어프리 내비게이션 플랫폼</p>
                 </div>
@@ -157,13 +159,13 @@
                     <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
                         <h2 class="text-base font-bold flex items-center gap-2 mb-3">
                             <span class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-extrabold flex items-center justify-center">2</span>
-                            배리어프리 최적 경로 검색 <span class="text-xs font-normal text-slate-400 hc-text-muted">(FR-U02)</span>
+                            배리어프리 최적 경로 검색 <span class="text-xs font-normal text-slate-400 hc-text-muted">(FR-U02 · 카카오맵)</span>
                         </h2>
 
                         <div class="space-y-3">
                             <div>
                                 <div class="flex items-center justify-between mb-1">
-                                    <label class="block text-xs font-semibold text-slate-600 hc-text-muted">출발지 (GPS 또는 직접 입력)</label>
+                                    <label class="block text-xs font-semibold text-slate-600 hc-text-muted">출발지 (장소명 또는 GPS)</label>
                                     <button type="button" onclick="useCurrentGpsAsOrigin()" class="text-xs font-bold text-emerald-600 hover:underline">
                                         📍 현재 GPS 위치 사용
                                     </button>
@@ -179,7 +181,7 @@
 
                             <button onclick="calculateSafeRoute(true)"
                                 class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2 hc-btn-primary">
-                                <span>무장애 안전 경로 탐색 (실제 도로·GPS)</span>
+                                <span>무장애 안전 경로 탐색 (카카오맵 연동)</span>
                             </button>
                         </div>
                     </div>
@@ -237,17 +239,17 @@
                 </div>
 
                 <div class="lg:col-span-7 space-y-6">
-                    <!-- 실제 Leaflet 지도 + GPS -->
+                    <!-- 실제 KakaoMap 지도 -->
                     <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
                         <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
                             <div>
-                                <h2 class="text-base font-bold">실시간 배리어프리 공간 지도 <span class="text-xs font-normal text-slate-400 hc-text-muted">(OpenStreetMap · OSRM · GPS)</span></h2>
+                                <h2 class="text-base font-bold">실시간 카카오맵 배리어프리 공간 지도 <span class="text-xs font-normal text-slate-400 hc-text-muted">(Kakao Maps SDK v2)</span></h2>
                                 <p id="route-summary-subtitle" class="text-xs text-slate-500 hc-text-muted">출발지와 목적지를 검색해 경로를 확인하세요</p>
                             </div>
                             <span id="gps-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">GPS 확인 중...</span>
                         </div>
 
-                        <div id="live-map"></div>
+                        <div id="kakao-map"></div>
 
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
                             <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 hc-subcard">
@@ -384,7 +386,7 @@
     <footer class="bg-white border-t border-slate-200 py-4 mt-8 hc-card">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 hc-text-muted">
             <span>© 2026 BarrierFree-Way (BF-Way)</span>
-            <span>Leaflet · Nominatim · OSRM · YOLOv8</span>
+            <span>Kakao Maps SDK · Places · OSRM · YOLOv8</span>
         </div>
     </footer>
 
@@ -413,16 +415,12 @@
             elderly:  { label: '고령 보행자', maxSlope: 7.0, maxStep: 2.5, speedKmH: 2.8 }
         };
 
-        const map = L.map('live-map').setView(state.originCoords, 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
-
-        let originMarker = L.marker(state.originCoords).addTo(map).bindPopup('출발지');
-        let destMarker = L.marker(state.destCoords).addTo(map).bindPopup('목적지');
+        let kakaoMap = null;
+        let placesService = null;
+        let originMarker = null;
+        let destMarker = null;
         let gpsMarker = null;
-        let routeLine = null;
+        let routePolyline = null;
 
         function showToast(title, message, type = 'info') {
             const container = document.getElementById('toast-container');
@@ -439,6 +437,28 @@
             setTimeout(() => toast.remove(), 3500);
         }
 
+        function initKakaoMap() {
+            if (typeof kakao === 'undefined' || !kakao.maps) {
+                showToast('카카오맵 로딩 오류', 'Kakao Developers에서 https://uzcone.github.io 도메인이 등록되어 있는지 확인하세요.', 'danger');
+                return;
+            }
+            kakao.maps.load(() => {
+                const container = document.getElementById('kakao-map');
+                const center = new kakao.maps.LatLng(state.originCoords[0], state.originCoords[1]);
+                kakaoMap = new kakao.maps.Map(container, { center, level: 4 });
+                placesService = new kakao.maps.services.Places();
+
+                originMarker = new kakao.maps.Marker({ position: center, map: kakaoMap });
+                destMarker = new kakao.maps.Marker({
+                    position: new kakao.maps.LatLng(state.destCoords[0], state.destCoords[1]),
+                    map: kakaoMap
+                });
+
+                startGpsTracking();
+                calculateSafeRoute(false);
+            });
+        }
+
         function startGpsTracking() {
             if (!navigator.geolocation) {
                 document.getElementById('gps-badge').textContent = 'GPS 미지원';
@@ -452,11 +472,13 @@
                     document.getElementById('gps-badge').textContent = `GPS 연결됨 (±${Math.round(pos.coords.accuracy)}m)`;
                     document.getElementById('gps-badge').className = 'text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800';
 
-                    if (!gpsMarker) {
-                        gpsMarker = L.circleMarker([lat, lng], { radius: 8, color: '#ffffff', weight: 2, fillColor: '#2563eb', fillOpacity: 1 })
-                            .addTo(map).bindPopup('내 현재 위치');
-                    } else {
-                        gpsMarker.setLatLng([lat, lng]);
+                    if (kakaoMap) {
+                        const kakaoPos = new kakao.maps.LatLng(lat, lng);
+                        if (!gpsMarker) {
+                            gpsMarker = new kakao.maps.Marker({ position: kakaoPos, map: kakaoMap });
+                        } else {
+                            gpsMarker.setPosition(kakaoPos);
+                        }
                     }
                 },
                 () => {
@@ -473,21 +495,98 @@
             }
             state.originCoords = [...state.gpsCoords];
             document.getElementById('input-origin').value = `현재 위치 (${state.gpsCoords[0].toFixed(4)}, ${state.gpsCoords[1].toFixed(4)})`;
-            originMarker.setLatLng(state.originCoords);
-            map.setView(state.originCoords, 16);
+            if (kakaoMap && originMarker) {
+                const pos = new kakao.maps.LatLng(state.originCoords[0], state.originCoords[1]);
+                originMarker.setPosition(pos);
+                kakaoMap.setCenter(pos);
+            }
             calculateSafeRoute(true);
         }
 
-        async function geocodeAddress(query) {
-            const coordMatch = query.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
-            if (coordMatch) {
-                return [parseFloat(coordMatch[1]), parseFloat(coordMatch[2])];
+        function searchKakaoPlace(query) {
+            return new Promise((resolve, reject) => {
+                const coordMatch = query.match(/(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/);
+                if (coordMatch) {
+                    resolve([parseFloat(coordMatch[1]), parseFloat(coordMatch[2])]);
+                    return;
+                }
+                if (!placesService) {
+                    reject(new Error('카카오맵 장소 검색 서비스가 아직 준비되지 않았습니다.'));
+                    return;
+                }
+                placesService.keywordSearch(query, (data, status) => {
+                    if (status === kakao.maps.services.Status.OK && data.length > 0) {
+                        resolve([parseFloat(data[0].y), parseFloat(data[0].x)]);
+                    } else {
+                        reject(new Error(`'${query}' 장소를 카카오맵에서 찾을 수 없습니다.`));
+                    }
+                });
+            });
+        }
+
+        async function calculateSafeRoute(notify = true) {
+            const originText = document.getElementById('input-origin').value.trim();
+            const destText = document.getElementById('input-dest').value.trim();
+            const startTime = performance.now();
+
+            try {
+                if (originText) state.originCoords = await searchKakaoPlace(originText);
+                if (destText) state.destCoords = await searchKakaoPlace(destText);
+
+                if (kakaoMap) {
+                    const startLatLng = new kakao.maps.LatLng(state.originCoords[0], state.originCoords[1]);
+                    const destLatLng = new kakao.maps.LatLng(state.destCoords[0], state.destCoords[1]);
+                    originMarker.setPosition(startLatLng);
+                    destMarker.setPosition(destLatLng);
+                }
+
+                const osrmUrl = `https://router.project-osrm.org/route/v1/foot/${state.originCoords[1]},${state.originCoords[0]};${state.destCoords[1]},${state.destCoords[0]}?overview=full&geometries=geojson`;
+                const res = await fetch(osrmUrl);
+                const data = await res.json();
+
+                let distKm = 0;
+                if (data.code === 'Ok' && data.routes?.length) {
+                    const route = data.routes[0];
+                    distKm = route.distance / 1000;
+                    state.routePoints = route.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
+                } else {
+                    state.routePoints = [state.originCoords, state.destCoords];
+                    distKm = 1.0;
+                }
+
+                if (kakaoMap) {
+                    if (routePolyline) routePolyline.setMap(null);
+                    const kakaoPath = state.routePoints.map(([lat, lng]) => new kakao.maps.LatLng(lat, lng));
+                    routePolyline = new kakao.maps.Polyline({
+                        path: kakaoPath,
+                        strokeWeight: 6,
+                        strokeColor: '#10b981',
+                        strokeOpacity: 0.9
+                    });
+                    routePolyline.setMap(kakaoMap);
+
+                    const bounds = new kakao.maps.LatLngBounds();
+                    kakaoPath.forEach(p => bounds.extend(p));
+                    kakaoMap.setBounds(bounds);
+                }
+
+                const elapsedSec = ((performance.now() - startTime) / 1000).toFixed(2);
+                const totalMin = Math.max(1, Math.round((distKm / state.profile.speedKmH) * 60));
+
+                document.getElementById('route-summary-subtitle').textContent = `${originText} → ${destText}`;
+                document.getElementById('metric-distance').textContent = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(2)} km`;
+                document.getElementById('metric-time').textContent = totalMin >= 60 ? `${Math.floor(totalMin / 60)}시간 ${totalMin % 60}분` : `${totalMin}분`;
+                document.getElementById('metric-latency').textContent = `${elapsedSec} 초`;
+
+                state.navStepIndex = 0;
+                renderNavigationUI();
+
+                if (notify) {
+                    showToast('카카오맵 경로 탐색 완료', `${state.profile.label} (${state.profile.speedKmH} km/h) 기준 경로가 표시되었습니다.`, 'success');
+                }
+            } catch (err) {
+                showToast('경로 검색 안내', err.message || '장소명을 다시 확인해 주세요.', 'warning');
             }
-            const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=kr&q=${encodeURIComponent(query)}`;
-            const res = await fetch(url);
-            const data = await res.json();
-            if (!data || !data.length) throw new Error(`'${query}' 위치를 찾을 수 없습니다.`);
-            return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
         }
 
         function switchView(view) {
@@ -500,7 +599,7 @@
             document.getElementById('tab-admin').className = view === 'admin'
                 ? 'px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-white text-emerald-700 shadow-sm'
                 : 'px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-600';
-            if (view === 'user') setTimeout(() => map.invalidateSize(), 150);
+            if (view === 'user' && kakaoMap) setTimeout(() => kakaoMap.relayout(), 150);
             if (view === 'admin') renderAdminDashboard();
         }
 
@@ -541,55 +640,6 @@
             calculateSafeRoute(false);
         }
 
-        async function calculateSafeRoute(notify = true) {
-            const originText = document.getElementById('input-origin').value.trim();
-            const destText = document.getElementById('input-dest').value.trim();
-            const startTime = performance.now();
-
-            try {
-                if (originText) state.originCoords = await geocodeAddress(originText);
-                if (destText) state.destCoords = await geocodeAddress(destText);
-
-                originMarker.setLatLng(state.originCoords).bindPopup(`출발: ${originText}`);
-                destMarker.setLatLng(state.destCoords).bindPopup(`도착: ${destText}`);
-
-                const osrmUrl = `https://router.project-osrm.org/route/v1/foot/${state.originCoords[1]},${state.originCoords[0]};${state.destCoords[1]},${state.destCoords[0]}?overview=full&geometries=geojson`;
-                const res = await fetch(osrmUrl);
-                const data = await res.json();
-
-                let distKm = 0;
-                if (data.code === 'Ok' && data.routes?.length) {
-                    const route = data.routes[0];
-                    distKm = route.distance / 1000;
-                    state.routePoints = route.geometry.coordinates.map(([lon, lat]) => [lat, lon]);
-                } else {
-                    state.routePoints = [state.originCoords, state.destCoords];
-                    distKm = 1.0;
-                }
-
-                if (routeLine) map.removeLayer(routeLine);
-                routeLine = L.polyline(state.routePoints, { color: '#10b981', weight: 6, opacity: 0.9 }).addTo(map);
-                map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
-
-                const elapsedSec = ((performance.now() - startTime) / 1000).toFixed(2);
-                const totalMin = Math.max(1, Math.round((distKm / state.profile.speedKmH) * 60));
-
-                document.getElementById('route-summary-subtitle').textContent = `${originText} → ${destText}`;
-                document.getElementById('metric-distance').textContent = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(2)} km`;
-                document.getElementById('metric-time').textContent = totalMin >= 60 ? `${Math.floor(totalMin / 60)}시간 ${totalMin % 60}분` : `${totalMin}분`;
-                document.getElementById('metric-latency').textContent = `${elapsedSec} 초`;
-
-                state.navStepIndex = 0;
-                renderNavigationUI();
-
-                if (notify) {
-                    showToast('경로 탐색 완료', `${state.profile.label} 속도(${state.profile.speedKmH} km/h) 기준 경로가 표시되었습니다.`, 'success');
-                }
-            } catch (err) {
-                showToast('경로 검색 안내', err.message || '주소를 확인해 주세요.', 'warning');
-            }
-        }
-
         function getNavigationSteps() {
             const pts = state.routePoints;
             const p0 = pts[0] || state.originCoords;
@@ -613,8 +663,8 @@
             document.getElementById('voice-instruction-text').textContent = current.text;
             document.getElementById('vibration-indicator').classList.toggle('hidden', !current.vibration);
 
-            if (current.coords) {
-                map.panTo(current.coords);
+            if (kakaoMap && current.coords) {
+                kakaoMap.panTo(new kakao.maps.LatLng(current.coords[0], current.coords[1]));
             }
 
             document.getElementById('turn-by-turn-list').innerHTML = steps.map((step, idx) => {
@@ -748,8 +798,7 @@
         }
 
         window.onload = function () {
-            startGpsTracking();
-            calculateSafeRoute(false);
+            initKakaoMap();
             renderAdminDashboard();
         };
     </script>
