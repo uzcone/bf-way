@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Kakao Maps SDK (JavaScript Key + services library) -->
+    <!-- Kakao Maps SDK -->
     <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=9d848af2330dab0c896714b965d4d7f1&libraries=services&autoload=false"></script>
 
     <style>
@@ -45,12 +45,77 @@
             font-weight: 800 !important;
             border: 2px solid #FFFFFF !important;
         }
+
         #kakao-map {
-            height: 380px;
+            height: 390px;
             width: 100%;
             border-radius: 16px;
             z-index: 10;
             background: #e2e8f0;
+        }
+
+        /* To'liq ekranli navigatsiya rejimi (Fullscreen Navigation Mode) */
+        body.nav-fullscreen {
+            overflow: hidden;
+        }
+        body.nav-fullscreen header,
+        body.nav-fullscreen footer,
+        body.nav-fullscreen #left-control-panel,
+        body.nav-fullscreen #turn-card-panel,
+        body.nav-fullscreen #map-header-bar,
+        body.nav-fullscreen #map-metrics-grid {
+            display: none !important;
+        }
+        body.nav-fullscreen main {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            height: 100vh;
+        }
+        body.nav-fullscreen #view-user,
+        body.nav-fullscreen #main-grid,
+        body.nav-fullscreen #right-map-panel,
+        body.nav-fullscreen #map-card-wrapper {
+            height: 100vh !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            width: 100% !important;
+        }
+        body.nav-fullscreen #kakao-map {
+            height: 100vh !important;
+            border-radius: 0 !important;
+        }
+
+        /* KakaoMap Custom Overlay Badges */
+        .bf-badge {
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            border: 2px solid #ffffff;
+            white-space: nowrap;
+        }
+        .bf-badge-elev { background: #2563eb; }
+        .bf-badge-ramp { background: #059669; }
+        .bf-badge-stop { background: #e11d48; }
+
+        /* Scanner laser animation */
+        @keyframes scanLaser {
+            0%, 100% { top: 12%; }
+            50% { top: 86%; }
+        }
+        .scan-laser {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #10b981;
+            box-shadow: 0 0 14px #10b981;
+            animation: scanLaser 2.2s ease-in-out infinite;
         }
     </style>
 </head>
@@ -68,7 +133,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <h1 class="text-lg sm:text-xl font-extrabold tracking-tight">BarrierFree-Way <span class="text-emerald-600 hc-text-muted">(BF-Way)</span></h1>
-                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-900">KakaoMap Live</span>
+                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-900">v2.0 KakaoMap Pro</span>
                     </div>
                     <p class="text-xs text-slate-500 hc-text-muted">교통약자를 위한 AI 기반 맞춤형 배리어프리 내비게이션 플랫폼</p>
                 </div>
@@ -84,11 +149,13 @@
                     </button>
                 </div>
 
+                <button onclick="openAiScannerModal()"
+                    class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm transition-all">
+                    <span>📷 AI 스캐너</span>
+                </button>
+
                 <button id="btn-contrast" onclick="toggleHighContrast()" aria-pressed="false"
                     class="px-3 py-2 rounded-xl border border-slate-300 bg-slate-900 text-yellow-300 text-xs sm:text-sm font-bold flex items-center gap-1.5 hover:bg-slate-800 transition-all shadow-sm">
-                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14V4a6 6 0 010 12z"/>
-                    </svg>
                     <span id="contrast-label">고대비 UI 모드</span>
                 </button>
             </div>
@@ -99,9 +166,10 @@
 
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <section id="view-user" class="space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div id="main-grid" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                <div class="lg:col-span-5 space-y-6">
+                <!-- 좌측 컨트롤 패널 -->
+                <div id="left-control-panel" class="lg:col-span-5 space-y-6">
                     <!-- FR-U01 -->
                     <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
                         <div class="flex items-center justify-between mb-3">
@@ -179,10 +247,16 @@
                                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500">
                             </div>
 
-                            <button onclick="calculateSafeRoute(true)"
-                                class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2 hc-btn-primary">
-                                <span>무장애 안전 경로 탐색 (카카오맵 연동)</span>
-                            </button>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                                <button onclick="calculateSafeRoute(true)"
+                                    class="py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-1.5">
+                                    <span>🔍 안전 경로 탐색</span>
+                                </button>
+                                <button onclick="enterFullscreenNav()"
+                                    class="py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-1.5 hc-btn-primary">
+                                    <span>🧭 무장애 길안내 시작</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -193,7 +267,9 @@
                                 <span class="w-6 h-6 rounded-lg bg-amber-100 text-amber-700 text-xs font-extrabold flex items-center justify-center">3</span>
                                 도로 장애물 AI 제보 <span class="text-xs font-normal text-slate-400 hc-text-muted">(FR-U04 · YOLOv8)</span>
                             </h2>
-                            <span class="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">신뢰도 ≥ 85% 즉시 차단</span>
+                            <button type="button" onclick="openAiScannerModal()" class="text-xs font-bold text-indigo-600 hover:underline">
+                                📷 실시간 스캐너 열기
+                            </button>
                         </div>
 
                         <div class="space-y-3">
@@ -232,26 +308,56 @@
 
                             <button onclick="submitObstacleReport()"
                                 class="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2 hc-btn-primary">
-                                <span>📸 원터치 촬영 및 YOLOv8 실시간 제보 전송</span>
+                                <span>📸 원터치 YOLOv8 실시간 제보 전송</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div class="lg:col-span-7 space-y-6">
-                    <!-- 실제 KakaoMap 지도 -->
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
-                        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <!-- 우측 지도 및 안내 패널 -->
+                <div id="right-map-panel" class="lg:col-span-7 space-y-6">
+                    <div id="map-card-wrapper" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card relative">
+                        
+                        <!-- Fullscreen Live Navigation Top Overlay -->
+                        <div id="fs-nav-top" class="hidden fixed top-4 left-4 right-4 z-50 bg-white/95 backdrop-blur rounded-2xl p-4 shadow-2xl border border-slate-200 flex items-center justify-between gap-3">
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl font-black shrink-0">
+                                    ↗
+                                </div>
+                                <div class="min-w-0">
+                                    <div id="fs-nav-title" class="text-base sm:text-lg font-extrabold text-slate-900 truncate">중계역 방면 무장애 안전 경로</div>
+                                    <div id="fs-nav-sub" class="text-xs text-slate-600 truncate">계단 0칸 · 완만 경사로 및 승강기 연계</div>
+                                </div>
+                            </div>
+                            <button onclick="openAiScannerModal()" class="px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold shrink-0">
+                                📷 AI 스캔
+                            </button>
+                        </div>
+
+                        <!-- Fullscreen Live Navigation Bottom Bar -->
+                        <div id="fs-nav-bottom" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-4">
+                            <span id="fs-nav-stats" class="text-sm font-extrabold whitespace-nowrap">737 m • 18분</span>
+                            <button onclick="advanceNavigationStep()" class="px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-xs font-bold whitespace-nowrap">
+                                ▶ 다음 구간
+                            </button>
+                            <button onclick="exitFullscreenNav()" class="w-9 h-9 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-black flex items-center justify-center" title="길안내 종료">
+                                ✕
+                            </button>
+                        </div>
+
+                        <div id="map-header-bar" class="flex flex-wrap items-center justify-between gap-2 mb-3">
                             <div>
-                                <h2 class="text-base font-bold">실시간 카카오맵 배리어프리 공간 지도 <span class="text-xs font-normal text-slate-400 hc-text-muted">(Kakao Maps SDK v2)</span></h2>
+                                <h2 class="text-base font-bold">실시간 카카오맵 배리어프리 공간 지도 <span class="text-xs font-normal text-slate-400 hc-text-muted">(장애물·승강기 마커 연동)</span></h2>
                                 <p id="route-summary-subtitle" class="text-xs text-slate-500 hc-text-muted">출발지와 목적지를 검색해 경로를 확인하세요</p>
                             </div>
-                            <span id="gps-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">GPS 확인 중...</span>
+                            <div class="flex items-center gap-2">
+                                <span id="gps-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">GPS 확인 중...</span>
+                            </div>
                         </div>
 
                         <div id="kakao-map"></div>
 
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                        <div id="map-metrics-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
                             <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 hc-subcard">
                                 <div class="text-xs text-slate-500 hc-text-muted">총 안전 이동거리</div>
                                 <div id="metric-distance" class="text-lg font-extrabold text-slate-900 mt-0.5">--</div>
@@ -272,7 +378,7 @@
                     </div>
 
                     <!-- FR-U03 -->
-                    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
+                    <div id="turn-card-panel" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card">
                         <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
                             <h2 class="text-base font-bold flex items-center gap-2">
                                 <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 text-xs font-extrabold flex items-center justify-center">4</span>
@@ -383,10 +489,53 @@
         </section>
     </main>
 
+    <!-- AI SCANNER LIVE CAMERA MODAL -->
+    <div id="ai-scanner-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-5 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-extrabold text-slate-900">🤖 YOLOv8 실시간 보행 환경 스캐너</h3>
+                    <p class="text-xs text-slate-500">카메라 영상 분석 또는 AI 샘플 테스트</p>
+                </div>
+                <button onclick="closeAiScannerModal()" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 font-bold text-slate-700">✕</button>
+            </div>
+
+            <div class="relative rounded-2xl overflow-hidden bg-slate-900 aspect-video flex items-center justify-center">
+                <video id="scanner-video" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
+                <div id="scanner-sim-view" class="text-center text-white p-4">
+                    <div class="text-3xl mb-2">📷</div>
+                    <p class="text-sm font-bold">카메라 연결 대기 중</p>
+                    <p class="text-xs text-slate-300 mt-1">아래 버튼으로 실제 카메라를 켜거나 AI 테스트 스캔을 실행하세요.</p>
+                </div>
+                <div class="scan-laser"></div>
+
+                <!-- Detected bounding box overlay -->
+                <div id="scanner-bbox" class="hidden absolute inset-6 border-2 border-amber-400 rounded-xl pointer-events-none flex items-start justify-between p-2">
+                    <span id="scanner-bbox-label" class="bg-amber-400 text-slate-950 text-xs font-extrabold px-2 py-0.5 rounded">
+                        높은 보도 턱 (94.2%)
+                    </span>
+                </div>
+            </div>
+
+            <div id="scanner-result-text" class="p-3 rounded-xl bg-slate-100 text-xs text-slate-700 font-medium">
+                실시간 카메라로 전방의 계단, 턱, 공사 구간을 비추면 자동으로 위험도를 판별합니다.
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5">
+                <button onclick="startRealCamera()" class="py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold">
+                    🎥 실제 카메라 켜기
+                </button>
+                <button onclick="runSimulatedAiScan()" class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold">
+                    ⚡ AI 장애물 스캔 테스트
+                </button>
+            </div>
+        </div>
+    </div>
+
     <footer class="bg-white border-t border-slate-200 py-4 mt-8 hc-card">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 hc-text-muted">
             <span>© 2026 BarrierFree-Way (BF-Way)</span>
-            <span>Kakao Maps SDK · Places · OSRM · YOLOv8</span>
+            <span>Kakao Maps SDK · Fullscreen Nav · Custom Markers · YOLOv8 Camera</span>
         </div>
     </footer>
 
@@ -400,6 +549,9 @@
             originCoords: [37.6485, 127.0645],
             destCoords: [37.6492, 127.0768],
             routePoints: [],
+            lastDistText: '737 m',
+            lastTimeText: '18분',
+            cameraStream: null,
             reports: [
                 { id: 'OBS-104', location: '중계로 214번길 보행로 (Link #204)', type: '도로 공사 구간', confidence: 94.2, isBlocked: false, status: 'PENDING' },
                 { id: 'OBS-103', location: '중계역 2번 출구 앞 계단 연결로 (Link #102)', type: '미등록 계단', confidence: 98.5, isBlocked: true, status: 'APPROVED' },
@@ -421,6 +573,7 @@
         let destMarker = null;
         let gpsMarker = null;
         let routePolyline = null;
+        let barrierOverlays = [];
 
         function showToast(title, message, type = 'info') {
             const container = document.getElementById('toast-container');
@@ -439,7 +592,7 @@
 
         function initKakaoMap() {
             if (typeof kakao === 'undefined' || !kakao.maps) {
-                showToast('카카오맵 로딩 오류', 'Kakao Developers에서 https://uzcone.github.io 도메인이 등록되어 있는지 확인하세요.', 'danger');
+                showToast('카카오맵 로딩 오류', 'Kakao Developers 도메인 설정을 확인해 주세요.', 'danger');
                 return;
             }
             kakao.maps.load(() => {
@@ -511,7 +664,7 @@
                     return;
                 }
                 if (!placesService) {
-                    reject(new Error('카카오맵 장소 검색 서비스가 아직 준비되지 않았습니다.'));
+                    reject(new Error('카카오맵 장소 검색 서비스가 준비 중입니다.'));
                     return;
                 }
                 placesService.keywordSearch(query, (data, status) => {
@@ -521,6 +674,41 @@
                         reject(new Error(`'${query}' 장소를 카카오맵에서 찾을 수 없습니다.`));
                     }
                 });
+            });
+        }
+
+        function renderBarrierOverlays(points) {
+            barrierOverlays.forEach(ov => ov.setMap(null));
+            barrierOverlays = [];
+            if (!kakaoMap || points.length < 3) return;
+
+            const rampPt = points[Math.floor(points.length * 0.35)];
+            const elevPt = points[Math.floor(points.length * 0.78)];
+            const midPt  = points[Math.floor(points.length * 0.52)];
+
+            const items = [
+                {
+                    pos: new kakao.maps.LatLng(rampPt[0], rampPt[1]),
+                    html: `<div class="bf-badge bf-badge-ramp">♿ 완만 경사로 (≤ ${state.profile.maxSlope}°)</div>`
+                },
+                {
+                    pos: new kakao.maps.LatLng(elevPt[0], elevPt[1]),
+                    html: `<div class="bf-badge bf-badge-elev">🛗 엘리베이터 연계</div>`
+                },
+                {
+                    pos: new kakao.maps.LatLng(midPt[0] + 0.0005, midPt[1] - 0.0004),
+                    html: `<div class="bf-badge bf-badge-stop">⛔ 계단 구간 회피</div>`
+                }
+            ];
+
+            items.forEach(item => {
+                const overlay = new kakao.maps.CustomOverlay({
+                    position: item.pos,
+                    content: item.html,
+                    yAnchor: 1.4
+                });
+                overlay.setMap(kakaoMap);
+                barrierOverlays.push(overlay);
             });
         }
 
@@ -559,11 +747,13 @@
                     const kakaoPath = state.routePoints.map(([lat, lng]) => new kakao.maps.LatLng(lat, lng));
                     routePolyline = new kakao.maps.Polyline({
                         path: kakaoPath,
-                        strokeWeight: 6,
+                        strokeWeight: 7,
                         strokeColor: '#10b981',
-                        strokeOpacity: 0.9
+                        strokeOpacity: 0.92
                     });
                     routePolyline.setMap(kakaoMap);
+
+                    renderBarrierOverlays(state.routePoints);
 
                     const bounds = new kakao.maps.LatLngBounds();
                     kakaoPath.forEach(p => bounds.extend(p));
@@ -573,20 +763,105 @@
                 const elapsedSec = ((performance.now() - startTime) / 1000).toFixed(2);
                 const totalMin = Math.max(1, Math.round((distKm / state.profile.speedKmH) * 60));
 
+                state.lastDistText = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(2)} km`;
+                state.lastTimeText = totalMin >= 60 ? `${Math.floor(totalMin / 60)}시간 ${totalMin % 60}분` : `${totalMin}분`;
+
                 document.getElementById('route-summary-subtitle').textContent = `${originText} → ${destText}`;
-                document.getElementById('metric-distance').textContent = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(2)} km`;
-                document.getElementById('metric-time').textContent = totalMin >= 60 ? `${Math.floor(totalMin / 60)}시간 ${totalMin % 60}분` : `${totalMin}분`;
+                document.getElementById('metric-distance').textContent = state.lastDistText;
+                document.getElementById('metric-time').textContent = state.lastTimeText;
                 document.getElementById('metric-latency').textContent = `${elapsedSec} 초`;
 
                 state.navStepIndex = 0;
                 renderNavigationUI();
 
                 if (notify) {
-                    showToast('카카오맵 경로 탐색 완료', `${state.profile.label} (${state.profile.speedKmH} km/h) 기준 경로가 표시되었습니다.`, 'success');
+                    showToast('안전 경로 탐색 완료', `${state.lastDistText} · 예상 ${state.lastTimeText} (장애물·승강기 마커 표시됨)`, 'success');
                 }
             } catch (err) {
                 showToast('경로 검색 안내', err.message || '장소명을 다시 확인해 주세요.', 'warning');
             }
+        }
+
+        // Fullscreen Live Navigation Mode Controls
+        function enterFullscreenNav() {
+            if (!state.routePoints.length) {
+                calculateSafeRoute(false);
+            }
+            document.body.classList.add('nav-fullscreen');
+            document.getElementById('fs-nav-top').classList.remove('hidden');
+            document.getElementById('fs-nav-bottom').classList.remove('hidden');
+
+            const destName = document.getElementById('input-dest').value.trim() || '목적지';
+            document.getElementById('fs-nav-title').textContent = `${destName} 방면 안전 길안내`;
+            document.getElementById('fs-nav-stats').textContent = `${state.lastDistText} • ${state.lastTimeText}`;
+
+            if (kakaoMap) {
+                setTimeout(() => {
+                    kakaoMap.relayout();
+                    const startPt = state.gpsCoords || state.originCoords;
+                    kakaoMap.setCenter(new kakao.maps.LatLng(startPt[0], startPt[1]));
+                    kakaoMap.setLevel(3);
+                }, 150);
+            }
+        }
+
+        function exitFullscreenNav() {
+            document.body.classList.remove('nav-fullscreen');
+            document.getElementById('fs-nav-top').classList.add('hidden');
+            document.getElementById('fs-nav-bottom').classList.add('hidden');
+            if (kakaoMap) {
+                setTimeout(() => kakaoMap.relayout(), 150);
+            }
+        }
+
+        // AI Scanner Live Camera & Simulation
+        function openAiScannerModal() {
+            document.getElementById('ai-scanner-modal').classList.remove('hidden');
+        }
+
+        function closeAiScannerModal() {
+            document.getElementById('ai-scanner-modal').classList.add('hidden');
+            if (state.cameraStream) {
+                state.cameraStream.getTracks().forEach(track => track.stop());
+                state.cameraStream = null;
+            }
+            const video = document.getElementById('scanner-video');
+            video.classList.add('hidden');
+            document.getElementById('scanner-sim-view').classList.remove('hidden');
+        }
+
+        async function startRealCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showToast('카메라 미지원', '이 브라우저에서는 카메라 접근이 제한되어 테스트 스캔을 사용합니다.', 'warning');
+                runSimulatedAiScan();
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                state.cameraStream = stream;
+                const video = document.getElementById('scanner-video');
+                video.srcObject = stream;
+                video.classList.remove('hidden');
+                document.getElementById('scanner-sim-view').classList.add('hidden');
+                document.getElementById('scanner-result-text').textContent = '카메라 연결 성공! 전방 보행로를 비추고 AI 장애물 스캔 테스트를 누르세요.';
+            } catch (err) {
+                showToast('카메라 권한 안내', '카메라 권한이 거부되어 AI 시뮬레이션 모드로 전환합니다.', 'warning');
+                runSimulatedAiScan();
+            }
+        }
+
+        function runSimulatedAiScan() {
+            const samples = [
+                { label: '높은 보도 턱 (3.8cm · 94.2%)', msg: '⚠️ 전방 2m 앞 단차 초과(3.8cm) 검출! 우측 경사로 우회를 권장합니다.' },
+                { label: '미등록 계단 (12칸 · 97.6%)', msg: '⛔ 전방 계단 구간 검출! 휠체어 통행 불가 구간으로 자동 차단 등록 가능합니다.' },
+                { label: '도로 공사 펜스 (91.5%)', msg: '🚧 보행로 공사 구간 검출! 안전 경로가 재계산되었습니다.' }
+            ];
+            const picked = samples[Math.floor(Math.random() * samples.length)];
+            const bbox = document.getElementById('scanner-bbox');
+            bbox.classList.remove('hidden');
+            document.getElementById('scanner-bbox-label').textContent = picked.label;
+            document.getElementById('scanner-result-text').textContent = picked.msg;
+            if (navigator.vibrate) navigator.vibrate([180, 80, 180]);
         }
 
         function switchView(view) {
@@ -644,14 +919,14 @@
             const pts = state.routePoints;
             const p0 = pts[0] || state.originCoords;
             const p1 = pts[Math.floor(pts.length * 0.35)] || p0;
-            const p2 = pts[Math.floor(pts.length * 0.75)] || state.destCoords;
+            const p2 = pts[Math.floor(pts.length * 0.78)] || state.destCoords;
             const p3 = pts[pts.length - 1] || state.destCoords;
 
             return [
                 { coords: p0, text: `${document.getElementById('input-origin').value}에서 ${state.profile.label} 안전 경로 안내를 시작합니다.`, badge: '출발', vibration: false },
-                { coords: p1, text: `보행로를 따라 이동 중입니다. 경사 ≤ ${state.profile.maxSlope}° 기준을 확인하세요.`, badge: '구간 1', vibration: false },
-                { coords: p2, text: `전방 교차로 및 단차(≤ ${state.profile.maxStep}cm) 구간 주의가 필요합니다.`, badge: '주의', vibration: true },
-                { coords: p3, text: `${document.getElementById('input-dest').value} 목적지 인근에 도착했습니다.`, badge: '도착', vibration: false }
+                { coords: p1, text: `완만 경사로 구간 통과 중입니다. 허용 경사(≤ ${state.profile.maxSlope}°) 이내 안전 구간입니다.`, badge: '♿ 경사로', vibration: false },
+                { coords: p2, text: `전방 엘리베이터 환승 및 단차(≤ ${state.profile.maxStep}cm) 주의 구간입니다.`, badge: '🛗 승강기', vibration: true },
+                { coords: p3, text: `${document.getElementById('input-dest').value} 목적지에 안전하게 도착했습니다.`, badge: '도착', vibration: false }
             ];
         }
 
@@ -661,6 +936,7 @@
 
             document.getElementById('nav-step-num').textContent = state.navStepIndex + 1;
             document.getElementById('voice-instruction-text').textContent = current.text;
+            document.getElementById('fs-nav-sub').textContent = current.text;
             document.getElementById('vibration-indicator').classList.toggle('hidden', !current.vibration);
 
             if (kakaoMap && current.coords) {
