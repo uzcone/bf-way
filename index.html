@@ -343,15 +343,15 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-extrabold text-slate-900">🤖 YOLOv8 실시간 보행 환경 스캐너</h3>
-                    <p class="text-xs text-slate-500">실제 FastAPI YOLOv8 서버 추론 및 원클릭 장애물 제보</p>
+                    <p class="text-xs text-slate-500">Google Colab FastAPI 서버 추론 및 원클릭 장애물 제보</p>
                 </div>
                 <button onclick="closeAiScannerModal()" class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 font-bold text-slate-700">✕</button>
             </div>
 
-            <!-- YOLOv8 FastAPI Endpoint Input -->
+            <!-- Colab Cloudflare Tunnel URL -->
             <div>
-                <label class="block text-[11px] font-bold text-slate-500 mb-1">YOLOv8 API 서버 주소 (FastAPI /detect)</label>
-                <input id="yolo-api-url" type="text" value="http://localhost:8000/detect"
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">YOLOv8 API 서버 주소 (Colab Cloudflare Tunnel)</label>
+                <input id="yolo-api-url" type="text" value="https://deleted-compilation-arrange-strongly.trycloudflare.com/detect"
                     class="w-full px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-mono">
             </div>
 
@@ -622,8 +622,9 @@
                 video.srcObject = stream;
                 video.classList.remove('hidden');
                 document.getElementById('scanner-sim-view').classList.add('hidden');
+                document.getElementById('scanner-result-text').textContent = '카메라 연결 완료! 전방을 비춘 뒤 YOLOv8 실시간 분석을 누르세요.';
             } catch (err) {
-                document.getElementById('scanner-result-text').textContent = '카메라 권한이 없어 시뮬레이션 모드로 대기 중입니다.';
+                document.getElementById('scanner-result-text').textContent = '카메라 권한을 허용해 주세요.';
             }
         }
 
@@ -634,53 +635,50 @@
             const bbox = document.getElementById('scanner-bbox');
             const reportBtn = document.getElementById('btn-report-from-scanner');
 
-            // 1) 실제 FastAPI YOLOv8 서버 연결 시도
-            if (state.cameraStream && video.videoWidth > 0 && apiUrl) {
-                try {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    canvas.getContext('2d').drawImage(video, 0, 0);
-                    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.8));
-
-                    const formData = new FormData();
-                    formData.append('file', blob, 'frame.jpg');
-
-                    document.getElementById('scanner-result-text').textContent = '⏳ YOLOv8 서버로 영상 프레임 전송 및 추론 중...';
-                    const resp = await fetch(apiUrl, { method: 'POST', body: formData });
-                    const data = await resp.json();
-
-                    if (data.detected) {
-                        state.lastScannedObstacle = { type: data.type, confidence: data.confidence };
-                        bbox.classList.remove('hidden');
-                        document.getElementById('scanner-bbox-label').textContent = `${data.type} (${data.confidence}%)`;
-                        document.getElementById('scanner-result-text').textContent = data.message;
-                        reportBtn.classList.remove('hidden');
-                    } else {
-                        bbox.classList.add('hidden');
-                        reportBtn.classList.add('hidden');
-                        document.getElementById('scanner-result-text').textContent = data.message || '전방 보행로 안전';
-                    }
-                    return;
-                } catch (e) {
-                    // 서버 미연결 시 자동 폴백 시뮬레이션
-                }
+            if (!apiUrl) {
+                document.getElementById('scanner-result-text').textContent = 'YOLOv8 API 서버 주소를 입력해 주세요.';
+                return;
             }
 
-            // 2) FastAPI 서버 미연결 시 YOLOv8 추론 시뮬레이션 폴백
-            const fallbackSamples = [
-                { type: '높은 보도 턱 (3.8cm)', confidence: 94.2, msg: '⚠️ 전방 2m 앞 높은 보도 턱(3.8cm) 검출! (로컬 시뮬레이션)' },
-                { type: '미등록 계단 (12칸)', confidence: 97.6, msg: '⛔ 전방 미등록 계단 검출! 휠체어 통행 불가 구간입니다.' },
-                { type: '도로 공사 구간', confidence: 91.5, msg: '🚧 보행로 공사 펜스 검출! 즉시 우회 경로 등록이 필요합니다.' }
-            ];
-            const picked = fallbackSamples[Math.floor(Math.random() * fallbackSamples.length)];
-            state.lastScannedObstacle = { type: picked.type, confidence: picked.confidence };
-            bbox.classList.remove('hidden');
-            document.getElementById('scanner-bbox-label').textContent = `${picked.type} (${picked.confidence}%)`;
-            document.getElementById('scanner-result-text').textContent = picked.msg;
-            reportBtn.classList.remove('hidden');
+            if (!state.cameraStream || video.videoWidth === 0) {
+                document.getElementById('scanner-result-text').textContent = '먼저 "카메라 켜기" 버튼을 눌러 카메라를 활성화해 주세요.';
+                return;
+            }
+
+            try {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+
+                const formData = new FormData();
+                formData.append('file', blob, 'frame.jpg');
+
+                document.getElementById('scanner-result-text').textContent = '⏳ Colab YOLOv8 서버로 영상 프레임 전송 및 추론 중...';
+                const resp = await fetch(apiUrl, { method: 'POST', body: formData });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+
+                if (data.detected) {
+                    state.lastScannedObstacle = { type: data.type, confidence: data.confidence };
+                    bbox.classList.remove('hidden');
+                    document.getElementById('scanner-bbox-label').textContent = `${data.type} (${data.confidence}%)`;
+                    document.getElementById('scanner-result-text').textContent = data.message;
+                    reportBtn.classList.remove('hidden');
+                    if (navigator.vibrate) navigator.vibrate([180, 80, 180]);
+                } else {
+                    bbox.classList.add('hidden');
+                    reportBtn.classList.add('hidden');
+                    document.getElementById('scanner-result-text').textContent = data.message || '전방 보행로 안전 (장애물 미검출)';
+                }
+            } catch (e) {
+                bbox.classList.add('hidden');
+                reportBtn.classList.add('hidden');
+                document.getElementById('scanner-result-text').textContent =
+                    'Colab 서버 연결 실패: Colab 실행 상태와 Cloudflare Tunnel 주소를 확인해 주세요.';
+            }
         }
 
-        // 스캐너에서 검출된 장애물을 원클릭으로 제보 및 관리자 목록에 추가
         function reportDetectedFromScanner() {
             if (!state.lastScannedObstacle) return;
             const locText = state.gpsCoords
