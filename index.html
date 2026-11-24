@@ -50,9 +50,9 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <h1 class="text-lg sm:text-xl font-extrabold tracking-tight">BarrierFree-Way <span class="text-emerald-600 hc-text-muted">(BF-Way)</span></h1>
-                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-900">보행자 도로 정렬 · YOLOv8</span>
+                        <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-900">경로 기반 시설 필터 · YOLOv8</span>
                     </div>
-                    <p class="text-xs text-slate-500 hc-text-muted">차도가 아닌 실제 보행로(인도) 기반 맞춤형 배리어프리 내비게이션</p>
+                    <p class="text-xs text-slate-500 hc-text-muted">선택된 보행 경로 주변의 실제 승강기·경사로만 자동 매칭</p>
                 </div>
             </div>
 
@@ -199,21 +199,19 @@
                 <div id="right-map-panel" class="lg:col-span-7 space-y-6">
                     <div id="map-card-wrapper" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hc-card relative">
                         
-                        <!-- 전체화면 길안내 상단 오버레이 -->
                         <div id="fs-nav-top" class="hidden fixed top-4 left-4 right-4 z-50 bg-white/95 backdrop-blur rounded-2xl p-4 shadow-2xl border border-slate-200 flex items-center justify-between gap-3">
                             <div class="flex items-center gap-3 min-w-0">
                                 <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl font-black shrink-0">↗</div>
                                 <div class="min-w-0">
                                     <div id="fs-nav-title" class="text-base sm:text-lg font-extrabold text-slate-900 truncate">노원역 방면 안전 길안내</div>
-                                    <div id="fs-nav-sub" class="text-xs text-slate-600 truncate">보행자 도로(인도) 정렬 완료 · 계단 0칸</div>
+                                    <div id="fs-nav-sub" class="text-xs text-slate-600 truncate">현재 경로 반경 250m 내 시설물 표시 중</div>
                                 </div>
                             </div>
                             <button onclick="openAiScannerModal()" class="px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold shrink-0">📷 AI 스캔</button>
                         </div>
 
-                        <!-- 전체화면 길안내 하단 컨트롤 -->
                         <div id="fs-nav-bottom" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-4">
-                            <span id="fs-nav-stats" class="text-sm font-extrabold whitespace-nowrap">1.39 km • 33분</span>
+                            <span id="fs-nav-stats" class="text-sm font-extrabold whitespace-nowrap">1.20 km • 29분</span>
                             <button onclick="advanceNavigationStep()" class="px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-xs font-bold whitespace-nowrap">▶ 다음 구간</button>
                             <button onclick="exitFullscreenNav()" class="w-9 h-9 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-black flex items-center justify-center">✕</button>
                         </div>
@@ -221,7 +219,7 @@
                         <div id="map-header-bar" class="flex flex-wrap items-center justify-between gap-2 mb-3">
                             <div>
                                 <h2 class="text-base font-bold">실시간 카카오맵 보행로(인도) 배리어프리 지도</h2>
-                                <p id="route-summary-subtitle" class="text-xs text-slate-500 hc-text-muted">차도 중심선에서 우측 보행로(인도)로 자동 정렬됨</p>
+                                <p id="route-summary-subtitle" class="text-xs text-slate-500 hc-text-muted">현재 탐색된 경로 주변 시설물만 자동 필터링됨</p>
                             </div>
                             <span id="gps-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">GPS 확인 중...</span>
                         </div>
@@ -399,8 +397,9 @@
             originCoords: [37.6485, 127.0645],
             destCoords: [37.6551, 127.0613],
             routePoints: [],
-            lastDistText: '1.39 km',
-            lastTimeText: '33분',
+            activeRoutePois: [],
+            lastDistText: '1.20 km',
+            lastTimeText: '29분',
             cameraStream: null,
             lastScannedObstacle: null,
             reports: [
@@ -411,32 +410,19 @@
             ]
         };
 
-        // 실제 위치 기반 배리어프리 시설물 및 회피 구간 데이터 (인도/출입구 좌표)
+        // 각 역/학교의 실제 위치 좌표에 맞춘 배리어프리 시설물 데이터베이스
         const REAL_POI_DATABASE = [
-            {
-                lat: 37.6491,
-                lng: 127.0641,
-                type: 'ramp',
-                title: '♿ 한국성서대 정문 앞 완만 경사로 (3.2°)'
-            },
-            {
-                lat: 37.6518,
-                lng: 127.0628,
-                type: 'elev',
-                title: '🛗 중계역 2번 출구 외부 엘리베이터'
-            },
-            {
-                lat: 37.6524,
-                lng: 127.0621,
-                type: 'stop',
-                title: '⛔ 중계역 3번 출구 지하보도 계단 (우회)'
-            },
-            {
-                lat: 37.6548,
-                lng: 127.0616,
-                type: 'elev',
-                title: '🛗 노원역 7번 출구 휠체어 승강기'
-            }
+            // 한국성서대학교 주변
+            { lat: 37.6489, lng: 127.0641, type: 'ramp', title: '♿ 한국성서대 정문 앞 완만 경사로 (3.2°)' },
+
+            // 중계역 주변 (실제 중계역 사거리 ~ 37.6448, 127.0643 인근)
+            { lat: 37.6453, lng: 127.0640, type: 'elev', title: '🛗 중계역 2번 출구 외부 엘리베이터' },
+            { lat: 37.6445, lng: 127.0647, type: 'stop', title: '⛔ 중계역 3번 출구 지하보도 계단 (우회)' },
+
+            // 노원역 주변 (실제 노원역 사거리 ~ 37.6551, 127.0613 인근)
+            { lat: 37.6544, lng: 127.0616, type: 'elev', title: '🛗 노원역 7번 출구 휠체어 승강기' },
+            { lat: 37.6555, lng: 127.0611, type: 'stop', title: '⛔ 노원역 4번 출구 계단 구간 (우회)' },
+            { lat: 37.6531, lng: 127.0620, type: 'ramp', title: '♿ 동일로 216길 횡단보도 턱낮춤 경사로' }
         ];
 
         const profilePresets = {
@@ -464,31 +450,42 @@
             setTimeout(() => toast.remove(), 3500);
         }
 
-        // 도로 중심선(차도) 좌표를 진행 방향 우측 보행로(인도) 쪽으로 ~7.5m 평행 이동
+        // 두 위경도 좌표 간 거리(미터) 계산 (Haversine)
+        function getDistanceMeters(lat1, lng1, lat2, lng2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) ** 2 +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng / 2) ** 2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        // 선택된 보행 경로(routePoints) 주변 250m 이내 시설물만 필터링
+        function filterPoisNearRoute(routePoints, maxRadiusMeters = 250) {
+            if (!routePoints || routePoints.length === 0) return [];
+            return REAL_POI_DATABASE.filter(poi =>
+                routePoints.some(pt => getDistanceMeters(pt[0], pt[1], poi.lat, poi.lng) <= maxRadiusMeters)
+            );
+        }
+
         function shiftToSidewalk(points, offsetMeters = 7.5) {
             if (!points || points.length < 2) return points;
             const shifted = [];
             for (let i = 0; i < points.length; i++) {
                 const prev = points[Math.max(0, i - 1)];
                 const next = points[Math.min(points.length - 1, i + 1)];
-
                 const dLat = next[0] - prev[0];
                 const dLng = next[1] - prev[1];
                 const len = Math.hypot(dLat, dLng);
-
                 if (len === 0) {
                     shifted.push([...points[i]]);
                     continue;
                 }
-
-                // 진행 방향 기준 우측 법선 벡터 (Right-hand normal)
                 const rightLat = -dLng / len;
                 const rightLng = dLat / len;
-
-                // 서울 위도(37.65°) 기준 미터 -> 위경도 근사 변환
                 const latOffset = (rightLat * offsetMeters) / 111320;
                 const lngOffset = (rightLng * offsetMeters) / (111320 * Math.cos(points[i][0] * Math.PI / 180));
-
                 shifted.push([points[i][0] + latOffset, points[i][1] + lngOffset]);
             }
             return shifted;
@@ -553,12 +550,12 @@
             });
         }
 
-        function renderRealPoiOverlays() {
+        function renderFilteredPoiOverlays(nearbyPois) {
             barrierOverlays.forEach(ov => ov.setMap(null));
             barrierOverlays = [];
             if (!kakaoMap) return;
 
-            REAL_POI_DATABASE.forEach(poi => {
+            nearbyPois.forEach(poi => {
                 const badgeClass = poi.type === 'elev'
                     ? 'bf-badge-elev'
                     : poi.type === 'ramp'
@@ -602,8 +599,9 @@
                     rawPoints = [state.originCoords, state.destCoords];
                 }
 
-                // 차도 중심선에서 우측 보행로(인도) 방향으로 좌표 정렬
                 state.routePoints = shiftToSidewalk(rawPoints, 7.5);
+                // 현재 경로 반경 250m 이내에 있는 시설물만 추출
+                state.activeRoutePois = filterPoisNearRoute(state.routePoints, 250);
 
                 if (kakaoMap) {
                     if (routePolyline) routePolyline.setMap(null);
@@ -616,7 +614,7 @@
                     });
                     routePolyline.setMap(kakaoMap);
 
-                    renderRealPoiOverlays();
+                    renderFilteredPoiOverlays(state.activeRoutePois);
 
                     const bounds = new kakao.maps.LatLngBounds();
                     kakaoPath.forEach(p => bounds.extend(p));
@@ -628,14 +626,15 @@
                 state.lastDistText = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(2)} km`;
                 state.lastTimeText = totalMin >= 60 ? `${Math.floor(totalMin / 60)}시간 ${totalMin % 60}분` : `${totalMin}분`;
 
-                document.getElementById('route-summary-subtitle').textContent = `${originText} → ${destText} (보행로·인도 기준)`;
+                document.getElementById('route-summary-subtitle').textContent =
+                    `${originText} → ${destText} (주변 배리어프리 시설 ${state.activeRoutePois.length}건 연동)`;
                 document.getElementById('metric-distance').textContent = state.lastDistText;
                 document.getElementById('metric-time').textContent = state.lastTimeText;
                 document.getElementById('metric-latency').textContent = `${elapsedSec} 초`;
 
                 state.navStepIndex = 0;
                 renderNavigationUI();
-                if (notify) showToast('보행로 경로 탐색 완료', `${state.lastDistText} · 예상 ${state.lastTimeText} (인도 정렬 적용됨)`, 'success');
+                if (notify) showToast('보행로 경로 탐색 완료', `${state.lastDistText} · 예상 ${state.lastTimeText} (경로 주변 시설만 표시됨)`, 'success');
             } catch (err) {
                 showToast('경로 검색 안내', err.message, 'warning');
             }
@@ -665,7 +664,6 @@
             if (kakaoMap) setTimeout(() => kakaoMap.relayout(), 150);
         }
 
-        // YOLOv8 Scanner Controls
         function openAiScannerModal() {
             document.getElementById('ai-scanner-modal').classList.remove('hidden');
             startRealCamera();
@@ -826,14 +824,37 @@
         function getNavigationSteps() {
             const pts = state.routePoints;
             const p0 = pts[0] || state.originCoords;
-            const p1 = [37.6491, 127.0641];
-            const p2 = [37.6518, 127.0628];
             const p3 = pts[pts.length - 1] || state.destCoords;
+            const pois = state.activeRoutePois;
+
+            const step1Poi = pois.find(p => p.type === 'ramp') || pois[0];
+            const step2Poi = pois.find(p => p.type === 'elev') || pois[1] || step1Poi;
+
             return [
-                { coords: p0, text: `${document.getElementById('input-origin').value} 우측 보행로(인도)에서 안내를 시작합니다.`, badge: '출발', vibration: false },
-                { coords: p1, text: `한국성서대 정문 앞 완만 경사로(3.2°) 구간 통과 중입니다.`, badge: '♿ 경사로', vibration: false },
-                { coords: p2, text: `중계역 2번 출구 외부 엘리베이터 연계 및 단차(≤ ${state.profile.maxStep}cm) 주의 구간입니다.`, badge: '🛗 승강기', vibration: true },
-                { coords: p3, text: `${document.getElementById('input-dest').value} 목적지에 안전하게 도착했습니다.`, badge: '도착', vibration: false }
+                {
+                    coords: p0,
+                    text: `${document.getElementById('input-origin').value} 우측 보행로(인도)에서 안내를 시작합니다.`,
+                    badge: '출발',
+                    vibration: false
+                },
+                {
+                    coords: step1Poi ? [step1Poi.lat, step1Poi.lng] : (pts[Math.floor(pts.length * 0.35)] || p0),
+                    text: step1Poi ? `${step1Poi.title} 구간 통과 중입니다.` : `허용 경사(≤ ${state.profile.maxSlope}°) 이내 완만 보행 구간입니다.`,
+                    badge: '♿ 경사로',
+                    vibration: false
+                },
+                {
+                    coords: step2Poi ? [step2Poi.lat, step2Poi.lng] : (pts[Math.floor(pts.length * 0.75)] || p3),
+                    text: step2Poi ? `${step2Poi.title} 및 단차(≤ ${state.profile.maxStep}cm) 주의 구간입니다.` : `전방 횡단보도 턱낮춤 구간입니다.`,
+                    badge: '🛗 승강기',
+                    vibration: true
+                },
+                {
+                    coords: p3,
+                    text: `${document.getElementById('input-dest').value} 목적지에 안전하게 도착했습니다.`,
+                    badge: '도착',
+                    vibration: false
+                }
             ];
         }
 
